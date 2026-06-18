@@ -1,0 +1,70 @@
+import React, { useState } from 'react';
+import Navbar from '../navbaryfooter/navbar.jsx';
+import Footer from '../navbaryfooter/footer.jsx';
+import Navbarc from '../navbaryfooter/categorianavbar.jsx';
+import Vista_s from '../navbaryfooter/Categorias/vistas_sF.jsx';
+import Vista_n from '../navbaryfooter/Categorias/vistas_nF.jsx';
+import { Link } from "react-router-dom";
+
+import card1 from '../assets/img/categorias/F2.jpg';
+import card2 from '../assets/img/categorias/F.jpg';
+
+const Categoria = () => {
+  const [filtro, setFiltro] = useState('Todos');
+
+  return (
+    <>
+      <Navbar />
+      <div className="container-fluid px-lg-5 py-4 bg-light min-vh-100">
+              <Navbarc />
+
+        <div className="d-flex align-items-center mb-4">
+          <Link className="btn btn-link text-decoration-none text-muted p-0 me-4" to="/">
+            <i className="bi bi-arrow-left me-2"></i>Volver al explorador
+          </Link>
+          <div className="p-1 rounded-pill d-flex gap-1 shadow-sm" style={{ backgroundColor: '#f0e6d2' }}>
+            <button 
+              onClick={() => setFiltro('Todos')}
+              className={`btn btn-sm rounded-pill px-4 border-0 ${filtro === 'Todos' ? 'bg-white shadow-sm fw-bold color-1' : 'text-muted'}`}
+            >
+              Todos
+            </button>
+            <button 
+              onClick={() => setFiltro('Articulos')}
+              className={`btn btn-sm rounded-pill px-4 border-0 ${filtro === 'Articulos' ? 'bg-white shadow-sm fw-bold color-1' : 'text-muted'}`}
+            >
+              Artículos
+            </button>
+            <button 
+              onClick={() => setFiltro('Subastas')}
+              className={`btn btn-sm rounded-pill px-4 border-0 ${filtro === 'Subastas' ? 'bg-white shadow-sm fw-bold color-1' : 'text-muted'}`}
+            >
+              Subastas
+            </button>
+          </div>
+        </div>
+        <div className="row g-4">
+          {(filtro === 'Todos' || filtro === 'Subastas') && (
+            <div className="col-md-6 col-lg-4 animate__animated animate__fadeIn">
+                <Vista_s imagen={card1} />
+            </div>
+          )}
+          {(filtro === 'Todos' || filtro === 'Articulos') && (
+            <div className="col-md-6 col-lg-4 animate__animated animate__fadeIn">
+              <Vista_n imagen={card2} />
+            </div>
+          )}
+
+        </div>
+
+        <div className="text-center mt-5 mb-5">
+          <button className="btn btn-link text-muted text-decoration-none fw-bold">VER MÁS</button>
+        </div>
+      </div>
+
+      <Footer />
+    </>
+  );
+};
+
+export default Categoria;

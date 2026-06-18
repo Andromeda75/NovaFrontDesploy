@@ -1,0 +1,62 @@
+{
+  "name": "novacreattions",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:all": "concurrently \"npm run dev\" \"npm run dev:backend\"",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@stripe/stripe-js": "^9.2.0",
+    "axios": "^1.14.0",
+    "bcryptjs": "^3.0.3",
+    "bootstrap": "^5.3.8",
+    "bootstrap-icons": "^1.13.1",
+    "cors": "^2.8.6",
+    "datatables.net": "^2.3.7",
+    "datatables.net-dt": "^2.3.7",
+    "datatables.net-react": "^1.0.1",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.1.1",
+    "mysql2": "^3.20.0",
+    "react": "^19.2.0",
+    "react-bootstrap": "^2.10.10",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.13.1",
+    "recharts": "^3.8.1",
+    "stripe": "^22.0.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "concurrently": "^8.2.2",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "nodemon": "^3.1.14",
+    "vite": "^7.3.1"
+  },
+  "description": "This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.",
+  "main": "eslint.config.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OmasSS15/NovaCreattions.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/OmasSS15/NovaCreattions/issues"
+  },
+  "homepage": "https://github.com/OmasSS15/NovaCreattions#readme"
+}
