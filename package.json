@@ -7,9 +7,10 @@
     "dev": "vite",
     "dev:backend": "cd backend && npm run dev",
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:backend\"",
-    "build": "vite build",
+    "build": "npx vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "npx vite preview"
+    
   },
   "dependencies": {
     "@stripe/stripe-js": "^9.2.0",
