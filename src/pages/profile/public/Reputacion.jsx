@@ -36,27 +36,39 @@ function Reputacion() {
   }, [userId]);
 
   const cargarDatos = async () => {
-    setLoading(true);
-    try {
-      // Obtener las reseñas del usuario (donde es destinatario)
-      const reseñasData = await reviewService.getMyReviews();
-      setReseñas(reseñasData);
-      
-      // Obtener el promedio directamente
-      const promedio = await reviewService.getPromedioByUser(userId);
-      setPromedioData({
-        promedio: promedio.promedio,
-        total_resenas: promedio.total_resenas
-      });
-      
-      // Calcular estadísticas
-      calcularEstadisticas(reseñasData);
-    } catch (err) {
-      console.error('Error cargando datos:', err);
-      setError('Error al cargar las reseñas');
-    } finally {
-      setLoading(false);
-    }
+      setLoading(true);
+      try {
+          console.log('📡 [Reputacion] Cargando datos de reputación...');
+          console.log('👤 [Reputacion] Usuario ID:', userId);
+          
+          // Obtener las reseñas del usuario (donde es destinatario)
+          console.log('📡 [Reputacion] Obteniendo reseñas...');
+          const reseñasData = await reviewService.getMyReviews();
+          console.log('✅ [Reputacion] Reseñas cargadas:', reseñasData);
+          setReseñas(reseñasData);
+          
+          // Obtener el promedio directamente
+          console.log('📡 [Reputacion] Obteniendo promedio...');
+          const promedio = await reviewService.getPromedioByUser(userId);
+          console.log('✅ [Reputacion] Promedio cargado:', promedio);
+          setPromedioData({
+              promedio: promedio.promedio || 0,
+              total_resenas: promedio.total_resenas || 0
+          });
+          
+          // Calcular estadísticas
+          console.log('📊 [Reputacion] Calculando estadísticas...');
+          calcularEstadisticas(reseñasData);
+          console.log('✅ [Reputacion] Datos cargados correctamente');
+          
+      } catch (err) {
+          console.error('❌ [Reputacion] Error cargando datos:', err);
+          console.error('❌ [Reputacion] Detalles del error:', err.response?.data);
+          console.error('❌ [Reputacion] Status:', err.response?.status);
+          setError('Error al cargar las reseñas');
+      } finally {
+          setLoading(false);
+      }
   };
 
   const calcularEstadisticas = (reseñasData) => {
