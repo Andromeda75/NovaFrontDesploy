@@ -1,8 +1,5 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-// ✅ IMPORTAR CSS GLOBAL
-import "/src/assets/css/styles.css";
-// ✅ IMPORTAR IMÁGENES CON RUTAS ABSOLUTAS
 import logo from "/img/logos/LogoSecundario.png";
 import banner from "/img/logos/NovaCreattions.png";
 import { authService } from '../../services/authService';
