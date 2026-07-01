@@ -298,3 +298,79 @@
   background-color: #ffffff !important;
   background: #ffffff !important;
 }
+
+/* styles.css - Agrega esto al final */
+
+/* ========== ESTILOS DE LOGIN/REGISTER ========== */
+.loginWrapper {
+  min-height: 100vh;
+  background: #ffffff;
+  overflow: hidden;
+  position: relative;
+}
+
+.ocean { 
+  height: 0%;
+  width: 100%;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  background: #853204;
+}
+
+.wave {
+  background: url('/img/wave.svg') repeat-x;
+  position: absolute;
+  top: -120px;
+  width: 6400px;
+  height: 120px;
+  animation: wave 7s cubic-bezier(0.36, 0.45, 0.63, 0.53) infinite;
+  transform: translate3d(0, 0, 0);
+}
+
+.wave:nth-of-type(2) {
+  top: -175px;
+  animation: wave 7s cubic-bezier(0.36, 0.45, 0.63, 0.53) -.125s infinite, swell 7s ease -1.25s infinite;
+  opacity: 1;
+}
+
+.oceanTop {
+  height: 0%;
+  width: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: #853204;
+}
+
+.waveTop {
+  background: url('/img/wave.svg') repeat-x;
+  position: absolute;
+  bottom: -120px;
+  width: 6400px;
+  height: 120px;
+  transform: rotate(180deg);
+  animation: wave 7s cubic-bezier(0.36, 0.45, 0.63, 0.53) infinite reverse;
+}
+
+.waveTop:nth-child(2) {
+  bottom: -175px;
+  animation: wave 7s cubic-bezier(0.36, 0.45, 0.63, 0.53) -.125s infinite reverse,
+             swell-top 7s ease -1.25s infinite reverse;
+  opacity: 1;
+}
+
+@keyframes wave {
+  0% { margin-left: 0; }
+  100% { margin-left: -1600px; }
+}
+
+@keyframes swell {
+  0%, 100% { transform: translate3d(0, -25px, 0); }
+  50% { transform: translate3d(0, 5px, 0); }
+}
+
+@keyframes swell-top {
+  0%, 100% { transform: rotate(180deg) translate3d(0, -25px, 0); }
+  50% { transform: rotate(180deg) translate3d(0, 5px, 0); }
+}
