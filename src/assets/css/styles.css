@@ -342,21 +342,24 @@
   background: #853204;
 }
 
-.waveTop {
-  background: url(../Img/wave.svg) repeat-x;
+.wave {
+  background: url('/img/wave.svg') repeat-x;
   position: absolute;
-  bottom: -120px; /* ahora va arriba */
+  top: -120px;
+  width: 6400px;
+  height: 120px;
+  animation: wave 7s cubic-bezier(0.36, 0.45, 0.63, 0.53) infinite;
+  transform: translate3d(0, 0, 0);
+}
+
+.waveTop {
+  background: url('/img/wave.svg') repeat-x;
+  position: absolute;
+  bottom: -120px;
   width: 6400px;
   height: 120px;
   transform: rotate(180deg);
   animation: wave 7s cubic-bezier(0.36, 0.45, 0.63, 0.53) infinite reverse;
-}
-
-.waveTop:nth-child(2) {
-  bottom: -175px;
-  animation: wave 7s cubic-bezier(0.36, 0.45, 0.63, 0.53) -.125s infinite reverse,
-             swell-top 7s ease -1.25s infinite reverse;
-  opacity: 1;
 }
 
 @keyframes wave {
