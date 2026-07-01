@@ -18,24 +18,19 @@ export const monetizacionService = {
         const response = await api.get('/admin/publicidades');
         return response.data;
     },
-
-    // ✅ Obtener publicidades públicas con URLs completas
     getPublicidadPublica: async () => {
         try {
             const response = await api.get('/admin/publicidad/public');
             console.log('✅ Respuesta recibida:', response.data);
             
-            // 🔥 CONVERTIR URLs RELATIVAS A COMPLETAS
-            const baseUrl = import.meta.env.VITE_API_URL || 'https://novabackdesploy.onrender.com';
+            // 🔥 Usar la URL base SIN /api
+            const baseUrl = 'https://novabackdesploy.onrender.com';
             
             const bannersConUrlCompleta = response.data.map(banner => {
-                // Si la URL ya es completa, no la modifiques
                 if (banner.imagen_url && banner.imagen_url.startsWith('http')) {
                     return banner;
                 }
-                // Si es relativa, construye la URL completa
                 if (banner.imagen_url) {
-                    // Asegurarse de que la ruta comience con /
                     const ruta = banner.imagen_url.startsWith('/') 
                         ? banner.imagen_url 
                         : '/' + banner.imagen_url;
