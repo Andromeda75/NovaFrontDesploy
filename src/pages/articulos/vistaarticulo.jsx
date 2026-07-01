@@ -90,7 +90,7 @@ const VistaArticulo = () => {
                     <h6 className="fw-bold color-1 mb-3">Método de Pago</h6>
                     <div className="border rounded-4 p-3 d-flex align-items-center bg-light">
                       <div className="bg-white border rounded p-2 me-3" style={{fontSize: '20px'}}>
-                        <img src="../src/assets/img/hand.png" alt="Visa" style={{ height: '40px', width: 'auto' }} />
+                        <img src="/img/assets/img/hand.png" alt="Visa" style={{ height: '40px', width: 'auto' }} />
                       </div>
                       <div>
                         <p className="m-0 small fw-bold color-1">Visa **** 4242</p>

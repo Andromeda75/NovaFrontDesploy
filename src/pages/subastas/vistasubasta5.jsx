@@ -61,14 +61,14 @@ const VistaSubasta = () => {
                       <small className="color-4"> <i className="bi bi-star-fill"></i> 4.9 / 5.0</small>
                     </div>
                     <div className='ms-auto'>
-                      <img src="../src/assets/img/iconos/heart.png" alt="Favoritos" style={{ height: '24px', width: 'auto', cursor: 'pointer' }} />
+                      <img src="/img/assets/img/iconos/heart.png" alt="Favoritos" style={{ height: '24px', width: 'auto', cursor: 'pointer' }} />
                     </div>  
                   </div>
                   <small className="color-3 fw-bold">ARTE VISUAL</small>
                   <div className="d-flex justify-content-between align-items-start mb-2">
                     <h2 className="color-1 fw-bold m-0">Minimalist Horizon</h2>
                     <div className="d-flex align-items-center gap-2 color-2">
-                      <img src="../src/assets/img/iconos/users.png" alt="Pujadores" style={{ height: '20px' }} />
+                      <img src="/img/assets/img/iconos/users.png" alt="Pujadores" style={{ height: '20px' }} />
                       <span className="fw-bold">12 pujas</span>
                     </div>
                   </div>
@@ -93,7 +93,7 @@ const VistaSubasta = () => {
                   </div>
 
                   <Button className="bg-color-1 border-0 w-100 py-3 fw-bold mb-2 shadow-sm d-flex align-items-center justify-content-center gap-2" onClick={() => setView('checkout')}>
-                    <img src="../src/assets/img/iconos/pujar_icon.png" alt="" style={{ height: '18px', filter: 'brightness(0) invert(1)' }} />
+                    <img src="/img/assets/img/iconos/pujar_icon.png" alt="" style={{ height: '18px', filter: 'brightness(0) invert(1)' }} />
                     <i className="bi bi-arrow-up-right me-2"></i>  PUJAR AHORA
                   </Button>
                   <small className="text-center d-block text-muted fw-bold">PUJA MÍNIMA: 500.00MXN</small>
@@ -144,7 +144,7 @@ const VistaSubasta = () => {
                   <h6 className="fw-bold color-1 mb-3">Método de Pago</h6>
                   <div className="border rounded-3 p-3 d-flex align-items-center bg-light">
                     <div className="bg-white border rounded p-2 me-3">
-                      <img src="../src/assets/img/iconos/hand.png" alt="Visa" style={{ height: '40px', width: 'auto' }} />
+                      <img src="/img/assets/img/iconos/hand.png" alt="Visa" style={{ height: '40px', width: 'auto' }} />
                     </div>
                     <div>
                       <p className="m-0 small fw-bold">**** 4242</p>
