@@ -44,7 +44,13 @@ function Navbar() {
                 <Row className="align-items-center g-0">
                     <Col xs={12} md={6} lg={3} className="d-flex justify-content-center align-items-center py-2">
                         <Link to="/">
-                            <Image src="/src/assets/img/logos/LogoPrincipal.png" alt="NovaCreations" className='col-10' fluid />
+                            {/* ✅ RUTA ABSOLUTA - CORREGIDA */}
+                            <Image 
+                                src="/img/logos/LogoPrincipal.png" 
+                                alt="NovaCreations" 
+                                className='col-10' 
+                                fluid 
+                            />
                         </Link>
                     </Col>
 
