@@ -21,10 +21,15 @@ export const monetizacionService = {
 
     // Obtener todas las publicidades
     getPublicidadPublica: async () => {
-        const response = await api.get('/admin/publicidad/public');
-        return response.data;
+        try {
+            const response = await api.get('/admin/publicidad/public');
+            console.log('✅ Respuesta recibida:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('❌ Error en getPublicidadPublica:', error);
+            return [];
+        }
     },
-
     // Crear publicidad (con imagen)
     createPublicidad: async (data) => {
         const formData = new FormData();

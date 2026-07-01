@@ -50,27 +50,32 @@ function Home() {
         }
     }, [publicidades]);
 
-    const cargarDatos = async () => {
-        setLoading(true);
-        try {
-
-            const perfilData = await perfilService.getUsers();
-            setPerfil(perfilData);
-
-            const subastaData = await subastaService.getSubastas();
-            setSubasta(subastaData);
-
-            const publicidadesData = await monetizacionService.getPublicidadPublica()
-            setPublicidades(publicidadesData);
-          
-        } catch (err) {
-          console.error('Error cargando datos:', err);
-          setError('Error al cargar los datos');
-        } finally {
-          setLoading(false);
-        }
-    };
-
+const cargarDatos = async () => {
+    setLoading(true);
+    try {
+        const publicidadesData = await monetizacionService.getPublicidadPublica();
+        
+        // 🔧 CORREGIR URLs: Si vienen del backend, reemplazar con la URL del frontend
+        const publicidadesCorregidas = publicidadesData.map(item => {
+            if (item.imagen_url && item.imagen_url.includes('onrender.com')) {
+                // Extraer solo la ruta relativa
+                const urlParts = item.imagen_url.split('/uploads/');
+                if (urlParts.length > 1) {
+                    item.imagen_url = '/uploads/' + urlParts[1];
+                }
+            }
+            return item;
+        });
+        
+        console.log('📢 URLs corregidas:', publicidadesCorregidas);
+        setPublicidades(publicidadesCorregidas);
+    } catch (err) {
+        console.error('Error cargando datos:', err);
+        setError('Error al cargar los datos');
+    } finally {
+        setLoading(false);
+    }
+};
     const mostrarSubastas = (array, tamaño) => {
     const grupos = [];
         for (let i = 0; i < array.length; i += tamaño) {
