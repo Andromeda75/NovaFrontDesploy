@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 // ✅ IMPORTAR CSS GLOBAL (no module)
-import background from"/src/assets/css/styles.css";
+import "/src/assets/css/styles.css";
 // ✅ IMPORTAR IMÁGENES CON RUTAS ABSOLUTAS
 import logo from "/img/logos/LogoSecundario.png";
 import banner from "/img/logos/NovaCreattions.png";
@@ -49,12 +49,12 @@ function Login() {
 
     return (
         <>
-            <div className={background.loginWrapper}>
-                <div className={background.oceanTop}>
-                    <div className={background.waveTop}></div>
+            <div className={loginWrapper}>
+                <div className={oceanTop}>
+                    <div className={waveTop}></div>
                 </div>
-                <div className={background.ocean}>
-                    <div className={background.wave}></div>
+                <div className={ocean}>
+                    <div className={wave}></div>
                 </div>
                 <section className="vh-100 position-relative" style={{ zIndex: 1 }}>
                     <div className="container-fluid vh-100">
