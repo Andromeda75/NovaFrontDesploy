@@ -19,17 +19,43 @@ export const monetizacionService = {
         return response.data;
     },
 
-    // Obtener todas las publicidades
+    // ✅ Obtener publicidades públicas con URLs completas
     getPublicidadPublica: async () => {
         try {
             const response = await api.get('/admin/publicidad/public');
             console.log('✅ Respuesta recibida:', response.data);
-            return response.data;
+            
+            // 🔥 CONVERTIR URLs RELATIVAS A COMPLETAS
+            const baseUrl = import.meta.env.VITE_API_URL || 'https://novabackdesploy.onrender.com';
+            
+            const bannersConUrlCompleta = response.data.map(banner => {
+                // Si la URL ya es completa, no la modifiques
+                if (banner.imagen_url && banner.imagen_url.startsWith('http')) {
+                    return banner;
+                }
+                // Si es relativa, construye la URL completa
+                if (banner.imagen_url) {
+                    // Asegurarse de que la ruta comience con /
+                    const ruta = banner.imagen_url.startsWith('/') 
+                        ? banner.imagen_url 
+                        : '/' + banner.imagen_url;
+                    return {
+                        ...banner,
+                        imagen_url: `${baseUrl}${ruta}`
+                    };
+                }
+                return banner;
+            });
+            
+            console.log('✅ URLs completas:', bannersConUrlCompleta);
+            return bannersConUrlCompleta;
+            
         } catch (error) {
             console.error('❌ Error en getPublicidadPublica:', error);
             return [];
         }
     },
+
     // Crear publicidad (con imagen)
     createPublicidad: async (data) => {
         const formData = new FormData();

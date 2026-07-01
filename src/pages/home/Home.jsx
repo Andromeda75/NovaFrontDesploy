@@ -50,27 +50,16 @@ function Home() {
     const cargarDatos = async () => {
         setLoading(true);
         try {
-            // Cargar perfiles
             const perfilData = await perfilService.getUsers();
             setPerfil(perfilData);
 
-            // Cargar subastas
             const subastaData = await subastaService.getSubastas();
             setSubasta(subastaData);
 
-            // Cargar publicidades y corregir URLs
+            // ✅ Ya no necesitas corregir URLs aquí, el servicio lo hace
             const publicidadesData = await monetizacionService.getPublicidadPublica();
-            const publicidadesCorregidas = publicidadesData.map(item => {
-                if (item.imagen_url && item.imagen_url.includes('onrender.com')) {
-                    const urlParts = item.imagen_url.split('/uploads/');
-                    if (urlParts.length > 1) {
-                        item.imagen_url = '/uploads/' + urlParts[1];
-                    }
-                }
-                return item;
-            });
-            console.log('📢 URLs corregidas:', publicidadesCorregidas);
-            setPublicidades(publicidadesCorregidas);
+            setPublicidades(publicidadesData);
+            
         } catch (err) {
             console.error('Error cargando datos:', err);
             setError('Error al cargar los datos');
@@ -78,7 +67,6 @@ function Home() {
             setLoading(false);
         }
     };
-
     const mostrarSubastas = (array, tamaño) => {
     const grupos = [];
         for (let i = 0; i < array.length; i += tamaño) {
