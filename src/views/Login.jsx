@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import backgroundUrl from "/css/ocean.module.css?url";
+import background from "../../assets/css/ocean.module.css";
 import logo from "../../assets/img/logos/Logo.png";
 import banner from "../../assets/img/logos/NovaCreattions.png";
 import { authService } from '../../services/authService';
