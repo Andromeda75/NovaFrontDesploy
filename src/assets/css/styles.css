@@ -299,9 +299,7 @@
   background: #ffffff !important;
 }
 
-/* styles.css - Agrega esto al final */
-
-/* ========== ESTILOS DE LOGIN/REGISTER ========== */
+/* Agrega estos estilos al final de styles.css */
 .loginWrapper {
   min-height: 100vh;
   background: #ffffff;
