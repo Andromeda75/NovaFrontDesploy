@@ -1,20 +1,15 @@
 import axios from 'axios';
 
-// const api = axios.create({
-//     baseURL: '/api',
-//     headers: {
-//         'Content-Type': 'application/json'
-//     }
-// });
-
-// Para el docker
+// Usa la variable de entorno para la URL base
 const api = axios.create({
-    baseURL: 'http://localhost:5000/api',
+    baseURL: import.meta.env.VITE_API_URL || 'https://novabackdesploy-1.onrender.com/api',
     headers: {
         'Content-Type': 'application/json'
-    }
+    },
+    timeout: 30000
 });
 
+// Interceptor para añadir token
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
@@ -26,6 +21,7 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
+// Interceptor para manejar errores de autenticación
 api.interceptors.response.use(
     (response) => response,
     (error) => {
@@ -33,7 +29,10 @@ api.interceptors.response.use(
             localStorage.removeItem('token');
             localStorage.removeItem('usuario');
             localStorage.removeItem('rol_id');
-            window.location.href = '/login';
+            localStorage.removeItem('user_id');
+            if (!window.location.pathname.includes('/login')) {
+                window.location.href = '/login';
+            }
         }
         return Promise.reject(error);
     }
