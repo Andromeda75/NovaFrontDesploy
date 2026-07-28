@@ -9,7 +9,7 @@ function Footer() {
         <div className="col-12 col-md-5 col-lg-4 text-start">
           <div className="d-flex align-items-center mb-3">
             <img 
-              src="/src/assets/img/logos/LogoSecundario.png" 
+              src="/img/logos/LogoSecundario.png" 
               alt="Logo" 
               className='col-2' 
               style={{ width: "80px" }}
