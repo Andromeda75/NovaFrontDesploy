@@ -7,12 +7,12 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://novabackdesploy.onrender.com',  // ← Cambiar para producción
+        target: 'https://novabackdesploy-1.onrender.com',  // ← Cambiar para producción
         changeOrigin: true,
         secure: false
       },
       '/uploads': {
-        target: 'https://novabackdesploy.onrender.com',  // ← Cambiar para producción
+        target: 'https://novabackdesploy-1.onrender.com',  // ← Cambiar para producción
         changeOrigin: true,
         secure: false
       }
