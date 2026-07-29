@@ -1015,23 +1015,61 @@ const MisSubastas = () => {
     }
   };
 
-  const handleEliminarClick = (id) => {
-    setSubastaAEliminar(id);
-    setShowDeleteModal(true);
+  const handleEliminarClick = (subasta) => {
+      //  VERIFICAR QUE EL USUARIO SEA EL PROPIETARIO
+      const user = authService.getCurrentUser();
+      if (user?.id !== subasta.vendedor_id) {
+          showModalMessage('Error', 'No puedes eliminar una subasta que no te pertenece', 'error');
+          return;
+      }
+
+      //  VERIFICAR QUE ESTÉ EN ESTADO PERMITIDO
+      if (subasta.estadoPrincipal !== 'PENDIENTE' && subasta.estadoPrincipal !== 'RECHAZADA') {
+          showModalMessage('Error', 
+              `Solo puedes eliminar subastas en estado "Pendiente" o "Rechazada". 
+              Estado actual: "${subasta.estadoPrincipal}"`, 
+              'error'
+          );
+          return;
+      }
+
+      //  MOSTRAR MODAL DE CONFIRMACIÓN
+      setSubastaAEliminar(subasta.id);
+      setShowDeleteModal(true);
   };
 
   const handleEliminarConfirm = async () => {
-    if (subastaAEliminar) {
+      if (!subastaAEliminar) return;
+
       try {
-        await subastaService.eliminarSubasta(subastaAEliminar);
-        await cargarSubastas();
-        setShowDeleteModal(false);
-        setSubastaAEliminar(null);
+          const response = await subastaService.eliminarSubasta(subastaAEliminar);
+          
+          //  Mostrar mensaje de éxito
+          showModalMessage('¡Éxito!', response.message || 'Subasta eliminada exitosamente', 'success');
+          
+          //  Recargar la lista
+          await cargarSubastas();
+          
+          //  Cerrar modal
+          setShowDeleteModal(false);
+          setSubastaAEliminar(null);
+          
       } catch (error) {
-        console.error('Error eliminando subasta:', error);
-        showModalMessage('Error', 'Error al eliminar la subasta', 'error');
+          console.error('Error eliminando subasta:', error);
+          
+          //  Manejar errores específicos
+          let errorMessage = 'Error al eliminar la subasta';
+          
+          if (error.response?.status === 403) {
+              errorMessage = error.response?.data?.message || 'No tienes permisos para eliminar esta subasta';
+          } else if (error.response?.status === 404) {
+              errorMessage = 'La subasta ya no existe';
+          } else if (error.response?.data?.message) {
+              errorMessage = error.response.data.message;
+          }
+          
+          showModalMessage('Error', errorMessage, 'error');
       }
-    }
   };
 
   // ========== HANDLE GUARDAR EDICION (MODIFICADO - CON VALIDACIÓN Y LOGS) ==========
@@ -3003,36 +3041,62 @@ const MisSubastas = () => {
 
       {/* MODAL DE CONFIRMACIÓN PARA ELIMINAR */}
       <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered contentClassName="rounded-5">
-        <div className="p-3 text-white text-center fw-bold rounded-top-5" 
-          style={{ background: "linear-gradient(to right, #2a140a, #8d4925)", fontSize: "20px", backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)'}}>
-            
-          Confirmar eliminación
-        </div>
-
-        <Modal.Body className="text-center p-5 bg-light rounded-bottom-5">
-          <div className="d-flex justify-content-center align-items-center mx-auto mb-4" style={{width: "90px", height: "90px", backgroundColor: "#f8d7da", borderRadius: "30px"}}>
-            <i className="bi bi-trash fs-1 text-danger"></i>
+          <div className="p-3 text-white text-center fw-bold rounded-top-5" 
+              style={{ 
+                  background: "linear-gradient(to right, #2a140a, #8d4925)", 
+                  fontSize: "20px",
+                  backdropFilter: 'blur(2px)',
+                  WebkitBackdropFilter: 'blur(2px)'
+              }}
+          >
+              Confirmar eliminación
           </div>
 
-          <h3 className="mb-3" style={{fontSize:"18px"}}>
-            ¿Estás seguro de que deseas eliminar la Subasta?
-          </h3>    
-          <p className="text-muted mb-4">Esta acción no se puede deshacer.</p>
+          <Modal.Body className="text-center p-5 bg-light rounded-bottom-5">
+              <div className="d-flex justify-content-center align-items-center mx-auto mb-4" 
+                  style={{ width: "90px", height: "90px", backgroundColor: "#f8d7da", borderRadius: "30px" }}
+              >
+                  <i className="bi bi-trash fs-1 text-danger"></i>
+              </div>
 
-          <div className="d-flex flex-column gap-3">
-            <button 
-              onClick={handleEliminarConfirm} 
-              className="btn-2" 
-              style={{ borderRadius: "30px", padding: "10px", border: "none", color: "white" }}
-            >
-              Eliminar
-            </button>
-            <Button  variant="outline-secondary"
-                    className="flex-grow-1 rounded-pill py-2" onClick={() => setShowDeleteModal(false)}>
-              Cancelar
-            </Button>
-          </div>
-        </Modal.Body>
+              <h3 className="mb-3" style={{ fontSize: "18px" }}>
+                  ¿Estás seguro de que deseas eliminar la Subasta?
+              </h3>
+              
+              <p className="text-muted mb-4">
+                  Esta acción no se puede deshacer.
+                  <br />
+                  <small className="text-warning">
+                      <i className="bi bi-info-circle me-1"></i>
+                      Solo se pueden eliminar subastas en estado "Pendiente" o "Rechazada".
+                  </small>
+              </p>
+
+              <div className="d-flex flex-column gap-3">
+                  <button 
+                      onClick={handleEliminarConfirm} 
+                      className="btn-2" 
+                      style={{ 
+                          borderRadius: "30px", 
+                          padding: "10px", 
+                          border: "none", 
+                          color: "white",
+                          backgroundColor: "#C50003"
+                      }}
+                      disabled={!subastaAEliminar}
+                  >
+                      <i className="bi bi-trash me-2"></i>
+                      Eliminar
+                  </button>
+                  <Button 
+                      variant="outline-secondary"
+                      className="flex-grow-1 rounded-pill py-2" 
+                      onClick={() => setShowDeleteModal(false)}
+                  >
+                      Cancelar
+                  </Button>
+              </div>
+          </Modal.Body>
       </Modal>
 
       {/* MODAL DE ERROR PARA IMÁGENES */}

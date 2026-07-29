@@ -33,32 +33,41 @@ export const subastaService = {
         return response.data;
     },
 
-    // Cambiar Estado de la Subasta (método antiguo - compatibilidad)
     cambiarEstado: async (id, data) => {
         const response = await api.put(`/subastas/${id}/estado`, data);
         return response.data;
     },
 
+    // ========== ELIMINAR SUBASTA (COMPATIBLE CON AMBAS RUTAS) ==========
     eliminarSubasta: async (id) => {
-        const response = await api.delete(`/subastas/${id}`);
-        return response.data;
+        try {
+            // Primero intenta con la ruta específica
+            const response = await api.delete(`/subastas/eliminar/${id}`);
+            return response.data;
+        } catch (error) {
+            // Si falla con 404, intenta con la ruta original
+            if (error.response?.status === 404) {
+                const response = await api.delete(`/subastas/${id}`);
+                return response.data;
+            }
+            // Si es otro error (403, 500, etc.), propagarlo
+            throw error;
+        }
     },
+
 
     // ========== NUEVOS MÉTODOS PARA APROBACIÓN/RECHAZO ==========
 
-    // ADMIN: Aprobar subasta (estado 8 - Activa)
     aprobarSubasta: async (id) => {
         const response = await api.put(`/subastas/${id}/aprobar`);
         return response.data;
     },
 
-    // ADMIN: Rechazar subasta con observaciones (estado 10 - Rechazada)
     rechazarSubasta: async (id, observaciones) => {
         const response = await api.put(`/subastas/${id}/rechazar`, { observaciones });
         return response.data;
     },
 
-    // USUARIO: Reenviar subasta rechazada (estado 10 → 7)
     reenviarSubasta: async (id) => {
         const response = await api.put(`/subastas/${id}/reenviar`);
         return response.data;
@@ -72,37 +81,31 @@ export const subastaService = {
 
     // ========== FIN NUEVOS MÉTODOS ==========
 
-    // Obtener información del ganador
     getGanador: async (id) => {
         const response = await api.get(`/subastas/${id}/ganador`);
         return response.data;
     },
 
-    // Obtener métodos de pago del usuario
     getMetodosPago: async (id) => {
         const response = await api.get(`/subastas/${id}/metodos-pago`);
         return response.data;
     },
 
-    // Validar pago de subasta
     validarPago: async (id, metodo_pago_id) => {
         const response = await api.post(`/subastas/${id}/validar-pago`, { metodo_pago_id });
         return response.data;
     },
 
-    // Obtener subastas por categoría
     getSubastasByCategoria: async (categoriaId) => {
         const response = await api.get(`/subastas/categoria/${categoriaId}`);
         return response.data;
     },
 
-    // Obtener artículos por categoría
     getArticulosByCategoria: async (categoriaId) => {
         const response = await api.get(`/subastas/articulos/categoria/${categoriaId}`);
         return response.data;
     },
 
-    // ========== NUEVO: Verificar y finalizar subastas vencidas (ADMIN) ==========
     verificarSubastasVencidas: async () => {
         const response = await api.post('/subastas/verificar-vencidas');
         return response.data;
