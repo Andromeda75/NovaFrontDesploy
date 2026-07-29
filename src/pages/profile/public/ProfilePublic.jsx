@@ -1,3 +1,4 @@
+// frontend/src/pages/profile/public/ProfilePublic.jsx
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import CatalogoCard from "../../../components/cards/catalogos/CatalogoCardv1.jsx";
@@ -6,9 +7,6 @@ import ArticuloCard from "../../../components/cards/articulos/ArticuloCardv1.jsx
 import ReseñaCard from "../../../components/cards/ReseñaCard.jsx";
 import RatingModal from "../../../components/modals/RatingModal.jsx";
 import MensajeModal from "../../../components/modals/MensajeModal.jsx";
-import imgEjemplo from '../../../assets/img/illustrations/categories/arte-visual/imgA_V5.jpg';
-import imgC from '../../../assets/img/illustrations/pinturas.jpg';
-import imgA from '../../../assets/img/illustrations/81G8xvpQEnL._AC_UF894,1000_QL80_.jpg';
 
 import { perfilService } from '../../../services/perfilService';
 import { authService } from '../../../services/authService';
@@ -19,6 +17,34 @@ import { reviewService } from '../../../services/reviewService';
 import { favoriteService } from "../../../services/favoriteService.js";
 
 import { useModal } from '../../../components/modals/useModal.jsx';
+
+// ========== FUNCIÓN PARA FORMATEAR CALIFICACIÓN A 1 DECIMAL ==========
+const formatearCalificacion = (valor) => {
+    if (valor === undefined || valor === null || isNaN(valor)) return '0.0';
+    return Number(valor).toFixed(1);
+};
+
+// 🔥 FUNCIÓN PARA DETECTAR MEGA SUBASTA
+const esMegaSubasta = (titulo) => {
+    if (!titulo) return false;
+    return titulo.startsWith('MegaSubasta:') || 
+           titulo.toLowerCase().includes('megasubasta');
+};
+
+// 🔥 FUNCIÓN PARA EXTRAER CANTIDAD DE ARTÍCULOS
+const extraerCantidadArticulos = (titulo) => {
+    if (!titulo) return 0;
+    const match = titulo.match(/y (\d+) más/);
+    if (match) {
+        return parseInt(match[1]) + 1;
+    }
+    // Intentar extraer número al final
+    const matchNum = titulo.match(/\d+$/);
+    if (matchNum) {
+        return parseInt(matchNum[0]);
+    }
+    return 0;
+};
 
 function ProfilePublic() {
     const [filtro, setFiltro] = useState('Catalogo');
@@ -43,7 +69,8 @@ function ProfilePublic() {
         instagram_handle: '',
         twitter_handle: '',
         calificacion_promedio: '',
-        fecha_registro: ''
+        fecha_registro: '',
+        foto_perfil_url: ''
     });
 
     const [catalogo, setCatalogo] = useState([]);
@@ -144,7 +171,6 @@ function ProfilePublic() {
                 });
                 setIsFavorite(false);
                 showModalMessage('Favoritos', 'Eliminado de favoritos', 'success');
-                console.log("Eliminado de favoritos");
             } else {
                 await favoriteService.postFavorite({
                     tipo: "artista",
@@ -152,7 +178,6 @@ function ProfilePublic() {
                 });
                 setIsFavorite(true);
                 showModalMessage('Favoritos', 'Agregado a favoritos', 'success');
-                console.log("Agregado a favoritos");
             }
         } catch (error) {
             console.error(error);
@@ -192,9 +217,21 @@ function ProfilePublic() {
                         marginLeft: "25px"
                         }}>
                     <div
-                        className="bg-white shadow rounded-3 d-flex justify-content-center align-items-center"
-                        style={{ width: "200px", height: "200px" }}>
-                        <i className="bi bi-person text-warning" style={{ fontSize: "150px" }}></i>
+                        className="bg-white shadow rounded-3 d-flex justify-content-center align-items-center overflow-hidden"
+                        style={{ width: "200px", height: "200px", border: '50%', borderColor: '#ffff', borderStyle: 'solid' }}>
+                        {perfil.foto_perfil_url ? (
+                            <img 
+                                src={perfil.foto_perfil_url} 
+                                alt="Foto de perfil"
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover'
+                                }}
+                            />
+                        ) : (
+                            <i className="bi bi-person text-warning" style={{ fontSize: "150px" }}></i>
+                        )}
                     </div>
                 </div>
 
@@ -270,7 +307,9 @@ function ProfilePublic() {
                                 <div className="d-flex justify-content-center align-items-center rounded-circle me-2 " style={{width: "35px", height: "35px", backgroundColor: "#FFD700"}}>
                                     <i className="bi bi-star-fill text-white fs-4"></i>
                                 </div>
-                                <span className="fw-bold color-2">{ perfil.calificacion_promedio } / 5.0</span>
+                                <span className="fw-bold color-2">
+                                    {formatearCalificacion(perfil.calificacion_promedio)} / 5.0
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -343,11 +382,36 @@ function ProfilePublic() {
                         {filtro === 'Subastas' && (
                             <>
                                 {subastasActivas.length > 0 ? (
-                                    subastasActivas.map(item => (
-                                        <div key={item.id} className="col-md-6 col-lg-4 animate__animated animate__fadeIn">
-                                            <SubastaCard {...item} />
-                                        </div>
-                                    ))
+                                    subastasActivas.map(item => {
+                                        // 🔥 DETECTAR MEGA SUBASTA
+                                        const esMega = esMegaSubasta(item.titulo);
+                                        
+                                        // 🔥 EXTRAER CANTIDAD DE ARTÍCULOS
+                                        let cantidad = item.total_articulos || item.cantidad_articulos || 0;
+                                        if (cantidad === 0 && esMega) {
+                                            cantidad = extraerCantidadArticulos(item.titulo);
+                                        }
+                                        
+                                        // 🔥 OBTENER PORTADA
+                                        const portada = item.portada || item.img1 || item.foto1_url;
+                                        
+                                        // 🔥 TÍTULO A MOSTRAR
+                                        const tituloMostrar = esMega ? 'MegaSubasta' : item.titulo;
+                                        
+                                        return (
+                                            <div key={item.id} className="col-md-6 col-lg-4 animate__animated animate__fadeIn">
+                                                <SubastaCard
+                                                    {...item}
+                                                    titulo={tituloMostrar}
+                                                    img1={portada}
+                                                    esMegaSubasta={esMega}
+                                                    cantidadArticulos={cantidad}
+                                                    portada={portada}
+                                                    isPage={true}
+                                                />
+                                            </div>
+                                        );
+                                    })
                                 ) : (
                                     <div className="col-12 text-center py-5">
                                         <i className="bi bi-folder-x fs-1 text-muted"></i>

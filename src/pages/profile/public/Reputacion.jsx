@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { reviewService } from '../../../services/reviewService';
 import { authService } from '../../../services/authService';
+import { perfilService } from '../../../services/perfilService';
 import MensajeModal from '../../../components/modals/MensajeModal';
 import { useModal } from '../../../components/modals/useModal';
 
@@ -14,6 +15,7 @@ function Reputacion() {
     promedio: 0,
     total_resenas: 0
   });
+  const [fotosPerfil, setFotosPerfil] = useState({});
   const [estadisticas, setEstadisticas] = useState({
     promedio: 0,
     total: 0,
@@ -36,39 +38,47 @@ function Reputacion() {
   }, [userId]);
 
   const cargarDatos = async () => {
-      setLoading(true);
-      try {
-          console.log('📡 [Reputacion] Cargando datos de reputación...');
-          console.log('👤 [Reputacion] Usuario ID:', userId);
-          
-          // Obtener las reseñas del usuario (donde es destinatario)
-          console.log('📡 [Reputacion] Obteniendo reseñas...');
-          const reseñasData = await reviewService.getMyReviews();
-          console.log('✅ [Reputacion] Reseñas cargadas:', reseñasData);
-          setReseñas(reseñasData);
-          
-          // Obtener el promedio directamente
-          console.log('📡 [Reputacion] Obteniendo promedio...');
-          const promedio = await reviewService.getPromedioByUser(userId);
-          console.log('✅ [Reputacion] Promedio cargado:', promedio);
-          setPromedioData({
-              promedio: promedio.promedio || 0,
-              total_resenas: promedio.total_resenas || 0
-          });
-          
-          // Calcular estadísticas
-          console.log('📊 [Reputacion] Calculando estadísticas...');
-          calcularEstadisticas(reseñasData);
-          console.log('✅ [Reputacion] Datos cargados correctamente');
-          
-      } catch (err) {
-          console.error('❌ [Reputacion] Error cargando datos:', err);
-          console.error('❌ [Reputacion] Detalles del error:', err.response?.data);
-          console.error('❌ [Reputacion] Status:', err.response?.status);
-          setError('Error al cargar las reseñas');
-      } finally {
-          setLoading(false);
+    setLoading(true);
+    try {
+      // Obtener las reseñas del usuario (donde es destinatario)
+      const reseñasData = await reviewService.getMyReviews();
+      setReseñas(reseñasData);
+      
+      // Obtener el promedio directamente
+      const promedio = await reviewService.getPromedioByUser(userId);
+      setPromedioData({
+        promedio: promedio.promedio,
+        total_resenas: promedio.total_resenas
+      });
+
+      // Cargar fotos de perfil de los autores
+      await cargarFotosPerfil(reseñasData);
+      
+      // Calcular estadísticas
+      calcularEstadisticas(reseñasData);
+    } catch (err) {
+      console.error('Error cargando datos:', err);
+      setError('Error al cargar las reseñas');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cargarFotosPerfil = async (reseñasData) => {
+    const fotos = {};
+    for (const reseña of reseñasData) {
+      if (reseña.autor_id && !fotos[reseña.autor_id]) {
+        try {
+          const perfilData = await perfilService.getPerfilPublico(reseña.autor_id);
+          if (perfilData.foto_perfil_url) {
+            fotos[reseña.autor_id] = perfilData.foto_perfil_url;
+          }
+        } catch (error) {
+          console.error('Error cargando foto del autor:', error);
+        }
       }
+    }
+    setFotosPerfil(fotos);
   };
 
   const calcularEstadisticas = (reseñasData) => {
@@ -122,6 +132,14 @@ function Reputacion() {
       month: '2-digit',
       year: 'numeric'
     });
+  };
+
+  // Función para obtener iniciales
+  const getInitials = (nombre) => {
+    if (!nombre) return '?';
+    const nombres = nombre.split(' ');
+    if (nombres.length === 1) return nombres[0].charAt(0).toUpperCase();
+    return (nombres[0].charAt(0) + nombres[nombres.length - 1].charAt(0)).toUpperCase();
   };
 
   const enviarRespuesta = async (reseñaId, respuesta) => {
@@ -213,65 +231,92 @@ function Reputacion() {
           {/* Lista de reseñas */}
           <div className="col-12 col-md-7 col-lg-8">
             {reseñas.length > 0 ? (
-              reseñas.map((r) => (
-                <div key={r.id} className="card border-0 shadow-sm p-3 mb-3 transition-hover" style={{ borderRadius: '20px' }}>
-                  <div className="d-flex justify-content-between align-items-center mb-2">
-                    <div className="d-flex align-items-center gap-2">
-                      <div className="bg-color-4 rounded-3 d-flex align-items-center justify-content-center" style={{ width: '45px', height: '45px' }}>
-                        <i className="bi bi-person fs-4 color-1"></i>
+              reseñas.map((r) => {
+                const fotoPerfil = fotosPerfil[r.autor_id];
+                const nombreAutor = r.autor_nombre || 'Usuario';
+                
+                return (
+                  <div key={r.id} className="card border-0 shadow-sm p-3 mb-3 transition-hover" style={{ borderRadius: '20px' }}>
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                      <div className="d-flex align-items-center gap-2">
+                        {/* Foto de perfil del autor */}
+                        <div className=" overflow-hidden d-flex align-items-center justify-content-center flex-shrink-0" 
+                          style={{
+                            width: '45px', 
+                            height: '45px', 
+                            borderRadius: '10%',
+                            backgroundColor: '#f3e1c7'
+              
+                          }}>
+                          {fotoPerfil ? (
+                            <img 
+                              src={fotoPerfil} 
+                              alt={`Foto de ${nombreAutor}`}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover'
+                              }}
+                            />
+                          ) : (
+                            <span className="fw-bold color-1" style={{ fontSize: '16px' }}>
+                              {getInitials(nombreAutor)}
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <h6 className="fw-bold color-1 mb-0">{nombreAutor}</h6>
+                          <small className="text-muted text-uppercase" style={{ fontSize: '0.6rem' }}>
+                            {formatearFecha(r.fecha)}
+                          </small>
+                        </div>
                       </div>
-                      <div>
-                        <h6 className="fw-bold color-1 mb-0">{r.autor_nombre || 'Usuario'}</h6>
-                        <small className="text-muted text-uppercase" style={{ fontSize: '0.6rem' }}>
-                          {formatearFecha(r.fecha)}
-                        </small>
-                      </div>
+                      <span className="badge rounded-pill bg-white text-warning border border-warning px-2 py-1 fw-bold shadow-sm small">
+                        <i className="bi bi-star-fill me-1"></i> {r.calificacion} / 5.0
+                      </span>
                     </div>
-                    <span className="badge rounded-pill bg-white text-warning border border-warning px-2 py-1 fw-bold shadow-sm small">
-                      <i className="bi bi-star-fill me-1"></i> {r.calificacion} / 5.0
-                    </span>
-                  </div>
-                  <p className="small mb-3 px-1" style={{ lineHeight: '1.4', fontSize: '0.85rem' }}>
-                    "{r.comentario || 'Sin comentario'}"
-                  </p>
+                    <p className="small mb-3 px-1" style={{ lineHeight: '1.4', fontSize: '0.85rem' }}>
+                      "{r.comentario || 'Sin comentario'}"
+                    </p>
 
-                  {respuestaActiva !== r.id ? (
-                    <button 
-                      onClick={() => setRespuestaActiva(r.id)}
-                      className="btn btn-link p-0 text-decoration-none color-1 fw-bold small opacity-75 text-start d-flex align-items-center gap-1">
-                      <i className="bi bi-reply"></i> Responder comentario
-                    </button>
-                  ) : (
-                    <div className="animate__animated animate__fadeIn">
-                      <textarea 
-                        className="form-control border-2 shadow-none mb-2 small" 
-                        placeholder="Escribe tu respuesta pública..." 
-                        rows="2" 
-                        style={{ borderRadius: '12px', fontSize: '0.8rem' }}
-                        autoFocus
-                        id={`respuesta-${r.id}`}
-                      ></textarea>
-                      <div className="d-flex flex-column flex-sm-row justify-content-end gap-2">
-                        <button 
-                          onClick={() => setRespuestaActiva(null)} 
-                          className="btn btn-light border rounded-pill px-3 py-1 order-2 order-sm-1"
-                        >
-                          Cancelar
-                        </button>
-                        <button 
-                          onClick={() => {
-                            const respuesta = document.getElementById(`respuesta-${r.id}`).value;
-                            enviarRespuesta(r.id, respuesta);
-                          }}
-                          className="btn btn-sm rounded-pill px-3 py-1 fw-bold text-white shadow-sm border-0 order-1 order-sm-2 bg-color-1"
-                        >
-                          Enviar respuesta
-                        </button>
+                    {respuestaActiva !== r.id ? (
+                      <button 
+                        onClick={() => setRespuestaActiva(r.id)}
+                        className="btn btn-link p-0 text-decoration-none color-1 fw-bold small opacity-75 text-start d-flex align-items-center gap-1">
+                        <i className="bi bi-reply"></i> Responder comentario
+                      </button>
+                    ) : (
+                      <div className="animate__animated animate__fadeIn">
+                        <textarea 
+                          className="form-control border-2 shadow-none mb-2 small" 
+                          placeholder="Escribe tu respuesta pública..." 
+                          rows="2" 
+                          style={{ borderRadius: '12px', fontSize: '0.8rem' }}
+                          autoFocus
+                          id={`respuesta-${r.id}`}
+                        ></textarea>
+                        <div className="d-flex flex-column flex-sm-row justify-content-end gap-2">
+                          <button 
+                            onClick={() => setRespuestaActiva(null)} 
+                            className="btn btn-light border rounded-pill px-3 py-1 order-2 order-sm-1"
+                          >
+                            Cancelar
+                          </button>
+                          <button 
+                            onClick={() => {
+                              const respuesta = document.getElementById(`respuesta-${r.id}`).value;
+                              enviarRespuesta(r.id, respuesta);
+                            }}
+                            className="btn btn-sm rounded-pill px-3 py-1 fw-bold text-white shadow-sm border-0 order-1 order-sm-2 bg-color-1"
+                          >
+                            Enviar respuesta
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              ))
+                    )}
+                  </div>
+                );
+              })
             ) : (
               <div className="card border-0 shadow-sm p-5 text-center" style={{ borderRadius: '20px' }}>
                 <i className="bi bi-chat-dots fs-1 text-muted mb-3"></i>

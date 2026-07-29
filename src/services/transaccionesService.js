@@ -17,5 +17,10 @@ export const transaccionesService = {
     getSaldoTickets: async () => {
         const response = await api.get('/tickets/saldo');
         return response.data;
+    },
+
+    getUltimaRecarga: async () => {
+        const response = await api.get('/tickets/ultima-recarga');
+        return response.data;
     }
 };

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { Button } from 'react-bootstrap';
 import { 
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
@@ -19,15 +20,26 @@ const ResumenView = () => {
     interes: '',
     ubicacion: '',
     calificacion_promedio: 0,
-    saldo_tickets: 0
+    saldo_tickets: 0,
+    foto_perfil_url: null
   });
+
+  // Estado para la foto de perfil
+  const [fotoPerfil, setFotoPerfil] = useState(null);
+  const [mostrarModalFoto, setMostrarModalFoto] = useState(false);
+  const [mostrarModalEliminar, setMostrarModalEliminar] = useState(false);
+  const [hoverPerfil, setHoverPerfil] = useState(false);
+  const [mostrarMenuOpciones, setMostrarMenuOpciones] = useState(false);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const fileInputRef = useRef(null);
+  const menuRef = useRef(null);
 
   // Estadísticas
   const [estadisticas, setEstadisticas] = useState({
     tickets_disponibles: 0,
-    subastas_publicadas: 0,
+    subastas_activas: 0,
     catalogos_publicados: 0,
-    articulos_publicados: 0
+    articulos_activos: 0
   });
 
   // Datos para gráficas
@@ -37,6 +49,20 @@ const ResumenView = () => {
   // Cargar datos al montar el componente
   useEffect(() => {
     cargarDatos();
+    cargarFotoPerfilDesdeBD();
+  }, []);
+
+  // Cerrar menú al hacer click fuera
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setMostrarMenuOpciones(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   // Cargar datos cuando cambia el período de ingresos
@@ -56,15 +82,18 @@ const ResumenView = () => {
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      // Cargar perfil
       const perfilData = await perfilService.getPerfil();
       setPerfil(perfilData);
       
-      // Cargar estadísticas
+      // Si el perfil tiene foto, actualizarla
+      if (perfilData.foto_perfil_url) {
+        setFotoPerfil(perfilData.foto_perfil_url);
+        localStorage.setItem('fotoPerfil', perfilData.foto_perfil_url);
+      }
+      
       const estadisticasData = await perfilService.getEstadisticas();
       setEstadisticas(estadisticasData);
       
-      // Cargar ingresos y ventas
       await cargarIngresos();
       await cargarVentas();
       
@@ -76,32 +105,196 @@ const ResumenView = () => {
     }
   };
 
+  // --- FUNCIÓN PARA COMPRIMIR IMAGEN ---
+  const comprimirImagen = (file, maxWidth = 800, maxHeight = 800, calidad = 0.7) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height = (height * maxWidth) / width;
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = (width * maxHeight) / height;
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const base64 = canvas.toDataURL('image/jpeg', calidad);
+          resolve(base64);
+        };
+        img.onerror = reject;
+      };
+      reader.onerror = reject;
+    });
+  };
+
+  // --- FUNCIONES PARA LA FOTO DE PERFIL ---
+
+  // Cargar foto de perfil desde la BD
+  const cargarFotoPerfilDesdeBD = async () => {
+    try {
+      const perfilData = await perfilService.getPerfil();
+      if (perfilData.foto_perfil_url) {
+        setFotoPerfil(perfilData.foto_perfil_url);
+        localStorage.setItem('fotoPerfil', perfilData.foto_perfil_url);
+      } else {
+        const fotoGuardada = localStorage.getItem('fotoPerfil');
+        if (fotoGuardada) {
+          setFotoPerfil(fotoGuardada);
+        }
+      }
+    } catch (err) {
+      console.error('Error cargando foto del perfil:', err);
+      const fotoGuardada = localStorage.getItem('fotoPerfil');
+      if (fotoGuardada) {
+        setFotoPerfil(fotoGuardada);
+      }
+    }
+  };
+
+  // Manejar la selección de archivo
+  const handleFileSelect = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor, selecciona una imagen válida');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('La imagen es demasiado grande. Máximo 5MB');
+      return;
+    }
+
+    try {
+      setSubiendoFoto(true);
+      
+      const imagenComprimida = await comprimirImagen(file, 800, 800, 0.7);
+      
+      const response = await perfilService.actualizarFotoPerfil(imagenComprimida);
+      
+      if (response.foto_perfil) {
+        setFotoPerfil(response.foto_perfil);
+        localStorage.setItem('fotoPerfil', response.foto_perfil);
+        setPerfil(prev => ({ ...prev, foto_perfil_url: response.foto_perfil }));
+        
+        // Disparar evento para actualizar navbar
+        window.dispatchEvent(new CustomEvent('fotoPerfilActualizada', { 
+          detail: { foto: response.foto_perfil } 
+        }));
+      }
+      
+      setMostrarMenuOpciones(false);
+      
+    } catch (err) {
+      console.error('Error subiendo foto:', err);
+      alert('Error al subir la foto. Por favor, intenta de nuevo.');
+    } finally {
+      setSubiendoFoto(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Abrir el selector de archivos
+  const handleClickSubirFoto = () => {
+    fileInputRef.current?.click();
+    setMostrarMenuOpciones(false);
+  };
+
+  // Abrir modal de confirmación para eliminar
+  const handleAbrirModalEliminar = () => {
+    setMostrarMenuOpciones(false);
+    setMostrarModalEliminar(true);
+  };
+
+  // Eliminar foto de perfil (confirmado)
+  const handleEliminarFoto = async () => {
+    try {
+      setSubiendoFoto(true);
+      await perfilService.eliminarFotoPerfil();
+      setFotoPerfil(null);
+      localStorage.removeItem('fotoPerfil');
+      setPerfil(prev => ({ ...prev, foto_perfil_url: null }));
+      setMostrarModalEliminar(false);
+      
+      // Disparar evento para actualizar navbar
+      window.dispatchEvent(new CustomEvent('fotoPerfilActualizada', { 
+        detail: { foto: null } 
+      }));
+      
+    } catch (err) {
+      console.error('Error eliminando foto:', err);
+      alert('Error al eliminar la foto. Por favor, intenta de nuevo.');
+    } finally {
+      setSubiendoFoto(false);
+    }
+  };
+
+  // Cancelar eliminación
+  const handleCancelarEliminar = () => {
+    setMostrarModalEliminar(false);
+  };
+
+  // Abrir modal para ver foto
+  const handleVerFoto = () => {
+    if (fotoPerfil) {
+      setMostrarModalFoto(true);
+      setMostrarMenuOpciones(false);
+    }
+  };
+
+  // Cerrar modal de foto
+  const handleCerrarModalFoto = (e) => {
+    if (e.target === e.currentTarget || e.target.closest('.modal-close-btn')) {
+      setMostrarModalFoto(false);
+    }
+  };
+
+  // Manejar click en la foto
+  const handleClickFoto = () => {
+    if (fotoPerfil) {
+      setMostrarMenuOpciones(!mostrarMenuOpciones);
+    } else {
+      fileInputRef.current?.click();
+    }
+  };
+
+  // ===== FUNCIONES EXISTENTES =====
   const cargarIngresos = async () => {
     try {
       const response = await perfilService.getIngresos(periodoIngresos);
-      
-      // Procesar datos para la gráfica
       const dias = obtenerDiasDelPeriodo(periodoIngresos);
       const datosProcesados = dias.map(dia => {
         const fechaStr = dia.toISOString().split('T')[0];
-        
-        // Buscar ingresos de subasta para este día
         const subastaDelDia = response.subasta?.find(s => 
           new Date(s.fecha).toISOString().split('T')[0] === fechaStr
         ) || { total: 0 };
-        
-        // Buscar ingresos de artículo para este día
         const articuloDelDia = response.articulo?.find(a => 
           new Date(a.fecha).toISOString().split('T')[0] === fechaStr
         ) || { total: 0 };
-        
-        // Buscar ingresos de petición para este día
         const peticionDelDia = response.peticion?.find(p => 
           new Date(p.fecha).toISOString().split('T')[0] === fechaStr
         ) || { total: 0 };
-        
         const total = subastaDelDia.total + articuloDelDia.total + peticionDelDia.total;
-        
         return {
           name: obtenerNombreDia(dia),
           ingresosTotales: total,
@@ -110,7 +303,6 @@ const ResumenView = () => {
           peticion: peticionDelDia.total
         };
       });
-      
       setDatosIngresos(datosProcesados);
     } catch (err) {
       console.error('Error cargando ingresos:', err);
@@ -120,25 +312,19 @@ const ResumenView = () => {
   const cargarVentas = async () => {
     try {
       const response = await perfilService.getVentas(periodoVentas);
-      
       const dias = obtenerDiasDelPeriodo(periodoVentas);
       const datosProcesados = dias.map(dia => {
         const fechaStr = dia.toISOString().split('T')[0];
-        
         const subastaDelDia = response.subasta?.find(s => 
           new Date(s.fecha).toISOString().split('T')[0] === fechaStr
         ) || { total: 0 };
-        
         const articuloDelDia = response.articulo?.find(a => 
           new Date(a.fecha).toISOString().split('T')[0] === fechaStr
         ) || { total: 0 };
-        
         const peticionDelDia = response.peticion?.find(p => 
           new Date(p.fecha).toISOString().split('T')[0] === fechaStr
         ) || { total: 0 };
-        
         const total = subastaDelDia.total + articuloDelDia.total + peticionDelDia.total;
-        
         return {
           name: obtenerNombreDia(dia),
           totalVentas: total,
@@ -147,7 +333,6 @@ const ResumenView = () => {
           peticion: peticionDelDia.total
         };
       });
-      
       setDatosVentas(datosProcesados);
     } catch (err) {
       console.error('Error cargando ventas:', err);
@@ -158,28 +343,18 @@ const ResumenView = () => {
     const dias = [];
     const hoy = new Date();
     let diasCount = 0;
-    
     switch (periodo) {
-      case '7dias':
-        diasCount = 7;
-        break;
-      case '14dias':
-        diasCount = 14;
-        break;
+      case '7dias': diasCount = 7; break;
+      case '14dias': diasCount = 14; break;
       case '30dias':
-      case 'mes':
-        diasCount = 30;
-        break;
-      default:
-        diasCount = 7;
+      case 'mes': diasCount = 30; break;
+      default: diasCount = 7;
     }
-    
     for (let i = diasCount - 1; i >= 0; i--) {
       const fecha = new Date();
       fecha.setDate(hoy.getDate() - i);
       dias.push(fecha);
     }
-    
     return dias;
   };
 
@@ -187,15 +362,12 @@ const ResumenView = () => {
     const diasSemana = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
     const hoy = new Date();
     const diffDias = Math.floor((hoy - fecha) / (1000 * 60 * 60 * 24));
-    
     if (diffDias === 0) return 'Hoy';
     if (diffDias === 1) return 'Ayer';
     if (diffDias < 7) return diasSemana[fecha.getDay()];
-    
     return `${fecha.getDate()}/${fecha.getMonth() + 1}`;
   };
 
-  // Calcular totales del período para ingresos
   const totalesIngresos = datosIngresos.reduce((acc, dia) => ({
     subasta: acc.subasta + (dia.subasta || 0),
     articulo: acc.articulo + (dia.articulo || 0),
@@ -203,7 +375,6 @@ const ResumenView = () => {
     total: acc.total + (dia.ingresosTotales || 0)
   }), { subasta: 0, articulo: 0, peticion: 0, total: 0 });
 
-  // Calcular totales del período para ventas
   const totalesVentas = datosVentas.reduce((acc, dia) => ({
     subasta: acc.subasta + (dia.subasta || 0),
     articulo: acc.articulo + (dia.articulo || 0),
@@ -211,7 +382,6 @@ const ResumenView = () => {
     total: acc.total + (dia.totalVentas || 0)
   }), { subasta: 0, articulo: 0, peticion: 0, total: 0 });
 
-  // Formatear moneda
   const formatearMoneda = (valor) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
@@ -221,7 +391,6 @@ const ResumenView = () => {
     }).format(valor);
   };
 
-  // Tooltip personalizado para ingresos
   const CustomTooltipIngresos = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
@@ -251,7 +420,6 @@ const ResumenView = () => {
     return null;
   };
 
-  // Tooltip personalizado para ventas
   const CustomTooltipVentas = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
@@ -306,11 +474,125 @@ const ResumenView = () => {
       {/* SECCIÓN DE PERFIL */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-start mb-4 gap-3">
         <div className="d-flex flex-column flex-md-row align-items-center align-items-md-start gap-4 text-center text-md-start w-90">
-          <div className="text-center">
-            <div className="rounded-4 d-flex align-items-center justify-content-center shadow-sm mb-2" 
-                 style={{ backgroundColor: '#f2d9bb', width: '100px', height: '100px' }}>
-              <i className="bi bi-person-circle text-muted" style={{ fontSize: '5rem' }}></i>
+          <div 
+            className="position-relative"
+            onMouseEnter={() => setHoverPerfil(true)}
+            onMouseLeave={() => setHoverPerfil(false)}
+          >
+            {/* Contenedor de la foto de perfil */}
+            <div 
+              className="rounded-4 d-flex align-items-center justify-content-center shadow-sm mb-2 position-relative"
+              style={{ 
+                backgroundColor: '#f2d9bb', 
+                width: '100px', 
+                height: '100px',
+                overflow: 'hidden',
+                cursor: subiendoFoto ? 'default' : 'pointer'
+              }}
+              onClick={subiendoFoto ? undefined : handleClickFoto}
+            >
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="d-none"
+                accept="image/*"
+                onChange={handleFileSelect}
+                disabled={subiendoFoto}
+              />
+              
+              {fotoPerfil ? (
+                <img 
+                  src={fotoPerfil} 
+                  alt="Foto de perfil"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
+              ) : (
+                <i className="bi bi-person-circle text-muted" style={{ fontSize: '5rem' }}></i>
+              )}
+
+              {subiendoFoto && (
+                <div className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+                  style={{
+                    backgroundColor: 'rgba(0,0,0,0.6)',
+                    borderRadius: '1rem',
+                    zIndex: 5
+                  }}
+                >
+                  <div className="spinner-border text-light" role="status" style={{ width: '30px', height: '30px' }}>
+                    <span className="visually-hidden">Subiendo...</span>
+                  </div>
+                </div>
+              )}
+
+              {!subiendoFoto && (
+                <div 
+                  className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+                  style={{
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    opacity: hoverPerfil ? 1 : 0,
+                    transition: 'opacity 0.3s ease',
+                    borderRadius: '1rem',
+                    pointerEvents: hoverPerfil ? 'auto' : 'none'
+                  }}
+                >
+                  <i className="bi bi-camera-fill text-white" style={{ fontSize: '2rem' }}></i>
+                </div>
+              )}
             </div>
+
+            {/* Menú flotante de opciones */}
+            {mostrarMenuOpciones && fotoPerfil && !subiendoFoto && (
+              <div 
+                ref={menuRef}
+                className="position-absolute bg-white rounded-3 shadow-lg"
+                style={{
+                  top: '110%',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  minWidth: '180px',
+                  zIndex: 1000,
+                  padding: '4px 0'
+                }}
+              >
+                <button
+                  className="w-100 border-0 bg-transparent text-start px-4 py-2 hover-bg-light d-flex align-items-center gap-2"
+                  style={{ fontSize: '0.9rem', transition: 'background 0.2s' }}
+                  onClick={handleVerFoto}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f0f2f5'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <i className="bi bi-eye"></i>
+                  Ver foto
+                </button>
+                <button
+                  className="w-100 border-0 bg-transparent text-start px-4 py-2 hover-bg-light d-flex align-items-center gap-2"
+                  style={{ fontSize: '0.9rem', transition: 'background 0.2s' }}
+                  onClick={handleClickSubirFoto}
+                  disabled={subiendoFoto}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f0f2f5'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <i className="bi bi-camera"></i>
+                  {subiendoFoto ? 'Subiendo...' : 'Elegir foto'}
+                </button>
+                <hr className="my-1" />
+                <button
+                  className="w-100 border-0 bg-transparent text-start px-4 py-2 text-danger hover-bg-light d-flex align-items-center gap-2"
+                  style={{ fontSize: '0.9rem', transition: 'background 0.2s' }}
+                  onClick={handleAbrirModalEliminar}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f0f2f5'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <i className="bi bi-trash"></i>
+                  Eliminar foto
+                </button>
+              </div>
+            )}
+
             <div className="small fw-bold" style={{ color: '#853204' }}>Calificación</div>
             <div className="h6 fw-bold color-2">
               <i className="bi bi-star-fill text-warning me-1"></i>{perfil.calificacion_promedio || 4.8} / 5.0
@@ -325,7 +607,6 @@ const ResumenView = () => {
             </div>
           </div>
         </div>
-        {/* Botones de Acción */}
         <div className="d-flex flex-column gap-2 mt-2">
           <Link to={`/profile/public/${perfil.id}`} className="text-decoration-none btn-linear-gradient border-0 rounded-3 py-2 px-4">
             <i className="bi bi-eye-fill me-2"></i> Ver como Público
@@ -337,9 +618,9 @@ const ResumenView = () => {
       <div className="row g-3 mb-4">
         {[
           { label: 'Tickets Disponibles', val: estadisticas.tickets_disponibles || 0, color: '#853104', icon: 'bi-ticket-perforated' },
-          { label: 'Subastas Publicadas', val: estadisticas.subastas_publicadas || 0, color: '#853104', icon: 'bi-hammer' },
+          { label: 'Subastas Activas', val: estadisticas.subastas_activas || 0, color: '#853104', icon: 'bi-hammer' },
           { label: 'Catálogos Publicados', val: estadisticas.catalogos_publicados || 0, color: '#853104', icon: 'bi-folder2'},
-          { label: 'Artículos Publicados', val: estadisticas.articulos_publicados || 0, color: '#853104', icon: 'bi-cart3' }
+          { label: 'Artículos Publicados', val: estadisticas.articulos_activos || 0, color: '#853104', icon: 'bi-cart3' }
         ].map((item, i) => (
           <div key={i} className="col-6 col-md-3">
             <div className="p-3 rounded-4 shadow-sm text-white h-100" style={{ backgroundColor: item.color }}>
@@ -366,7 +647,7 @@ const ResumenView = () => {
         <p className="text-muted small">Resumen de tus ingresos y ventas por categoría</p>
       </div>
 
-      {/* SECCIÓN DE GRÁFICAS: INGRESOS Y VENTAS */}
+      {/* SECCIÓN DE GRÁFICAS */}
       <div className="row g-4">
         {/* GRÁFICA DE INGRESOS */}
         <div className="col-lg-6">
@@ -385,7 +666,6 @@ const ResumenView = () => {
               </select>
             </div>
 
-            {/* Mini tarjetas de totales de ingresos */}
             <div className="d-flex gap-2 mb-3 flex-wrap">
               <div className="bg-light rounded-3 px-3 py-1">
                 <small className="text-muted">Total: </small>
@@ -405,7 +685,6 @@ const ResumenView = () => {
               </div>
             </div>
 
-            {/* Gráfica de ingresos */}
             <div style={{ width: '100%', height: '200px' }}>
               {datosIngresos.length > 0 ? (
                 <ResponsiveContainer>
@@ -424,21 +703,10 @@ const ResumenView = () => {
                         <stop offset="95%" stopColor="#ffc658" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
-                    
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis 
-                      dataKey="name" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fontSize: 9, fill: '#999' }}
-                    />
-                    <YAxis 
-                      tick={{ fontSize: 9, fill: '#999' }} 
-                      width={35} 
-                      tickFormatter={(value) => `$${value/1000}k`} 
-                    />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#999' }} />
+                    <YAxis tick={{ fontSize: 9, fill: '#999' }} width={35} tickFormatter={(value) => `$${value/1000}k`} />
                     <Tooltip content={<CustomTooltipIngresos />} />
-                    
                     <Area type="monotone" dataKey="subasta" stackId="1" stroke="#8884d8" strokeWidth={2} fill="url(#colorSubasta)" name="Subasta" />
                     <Area type="monotone" dataKey="articulo" stackId="1" stroke="#82ca9d" strokeWidth={2} fill="url(#colorArticulo)" name="Artículo" />
                     <Area type="monotone" dataKey="peticion" stackId="1" stroke="#ffc658" strokeWidth={2} fill="url(#colorPeticion)" name="Petición" />
@@ -470,7 +738,6 @@ const ResumenView = () => {
               </select>
             </div>
 
-            {/* Mini tarjetas de totales de ventas */}
             <div className="d-flex gap-2 mb-3 flex-wrap">
               <div className="bg-light rounded-3 px-3 py-1">
                 <small className="text-muted">Total: </small>
@@ -490,21 +757,14 @@ const ResumenView = () => {
               </div>
             </div>
 
-            {/* Gráfica de ventas */}
             <div style={{ width: '100%', height: '200px' }}>
               {datosVentas.length > 0 ? (
                 <ResponsiveContainer>
                   <BarChart data={datosVentas} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis 
-                      dataKey="name" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fontSize: 9, fill: '#999' }}
-                    />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#999' }} />
                     <YAxis tick={{ fontSize: 9, fill: '#999' }} width={35} />
                     <Tooltip content={<CustomTooltipVentas />} />
-                    
                     <Bar dataKey="subasta" stackId="a" fill="#8884d8" name="Subasta" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="articulo" stackId="a" fill="#82ca9d" name="Artículo" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="peticion" stackId="a" fill="#ffc658" name="Petición" radius={[4, 4, 0, 0]} />
@@ -519,6 +779,109 @@ const ResumenView = () => {
           </div>
         </div>
       </div>
+
+      {/* MODAL PARA VER FOTO */}
+      {mostrarModalFoto && (
+        <div 
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+          style={{
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            zIndex: 9999,
+            backdropFilter: 'blur(5px)',
+            WebkitBackdropFilter: 'blur(5px)'
+          }}
+          onClick={handleCerrarModalFoto}
+        >
+          <div 
+            className="bg-white rounded-4 p-3 position-relative"
+            style={{ maxWidth: '90vw', maxHeight: '90vh' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              className="btn btn-light rounded-circle position-absolute top-0 end-0 m-2 modal-close-btn"
+              style={{ 
+                width: '40px', 
+                height: '40px', 
+                zIndex: 10,
+                boxShadow: '0 2px 10px rgba(0,0,0,0.3)'
+              }}
+              onClick={() => setMostrarModalFoto(false)}
+            >
+              <i className="bi bi-x-lg"></i>
+            </button>
+            <img 
+              src={fotoPerfil} 
+              alt="Foto de perfil"
+              style={{
+                maxWidth: '80vw',
+                maxHeight: '80vh',
+                objectFit: 'contain',
+                borderRadius: '8px'
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMACIÓN PARA ELIMINAR */}
+      {mostrarModalEliminar && (
+        <>
+          <div style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            backgroundColor: "rgba(0,0,0,0.6)",
+            backdropFilter: 'blur(2px)',
+            WebkitBackdropFilter: 'blur(2px)',
+            zIndex: 1040
+          }}></div>
+
+          <div className="modal d-block" style={{ zIndex: 1050 }}>
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content border-0 shadow-lg" style={{ borderRadius: "20px", overflow: "hidden" }}>
+                <div className="p-3 text-white text-center fw-bold" style={{
+                  background: "linear-gradient(to right, #2a140a, #8d4925)",
+                  fontSize: "20px"
+                }}>
+                  Confirmar eliminación
+                </div>
+                <div className="modal-body text-center p-5 bg-light">
+                  <div className="d-flex justify-content-center align-items-center mx-auto mb-4" style={{
+                    width: "90px",
+                    height: "90px",
+                    backgroundColor: "#f8d7da",
+                    borderRadius: "30px"
+                  }}>
+                    <i className="bi bi-trash fs-1 text-danger"></i>
+                  </div>
+                  <h3 className="fw-bold mb-3">¿Eliminar foto de perfil?</h3>
+                  <p className="text-muted mb-4">Esta acción eliminará la foto de perfil permanentemente.</p>
+                  <div className="d-flex flex-column gap-3">
+                    <Button 
+                      className="btn-2" 
+                      onClick={handleEliminarFoto} 
+                      disabled={subiendoFoto}
+                      style={{ borderRadius: "30px", padding: "10px" }}
+                    >
+                      {subiendoFoto ? 'Eliminando...' : 'Eliminar'}
+                    </Button>
+                    <Button 
+                      className="btn btn-light border rounded-pill px-3 py-2 order-2 order-sm-1" 
+                      onClick={handleCancelarEliminar} 
+                      disabled={subiendoFoto}
+                      style={{ borderRadius: "30px" }}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

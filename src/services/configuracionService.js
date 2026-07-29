@@ -1,7 +1,8 @@
+// frontend/src/services/configuracionService.js
 import api from '../api/axiosConfig';
 
 export const configuracionService = {
-    // Categorías
+    // ========== CATEGORÍAS ==========
     getCategorias: async () => {
         const response = await api.get('/admin/categorias');
         return response.data;
@@ -27,7 +28,7 @@ export const configuracionService = {
         return response.data;
     },
 
-    // Políticas
+    // ========== POLÍTICAS (TÍTULO) ==========
     getPoliticas: async () => {
         const response = await api.get('/admin/politicas');
         return response.data;
@@ -38,23 +39,50 @@ export const configuracionService = {
         return response.data;
     },
 
-    // Documento
+    // ========== DOCUMENTO (TÉRMINOS Y CONDICIONES EN BASE64) ==========
+    
+    // Subir documento (convierte archivo a Base64 y lo envía)
     uploadDocumento: async (file) => {
-        const formData = new FormData();
-        formData.append('documento', file);
-        const response = await api.post('/admin/politicas/upload', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const base64 = e.target.result;
+                    const response = await api.post('/admin/terminos/upload', {
+                        documento: base64,
+                        nombre: file.name
+                    });
+                    resolve(response.data);
+                } catch (error) {
+                    reject(error);
+                }
+            };
+            reader.onerror = (error) => reject(error);
+            reader.readAsDataURL(file);
         });
-        return response.data;
     },
 
+    // Obtener información del documento
     getDocumentoInfo: async () => {
-        const response = await api.get('/admin/politicas/documento-info');
+        const response = await api.get('/admin/terminos/info');
         return response.data;
     },
 
+    // Obtener documento público (sin autenticación)
+    getDocumentoPublico: async () => {
+        const response = await api.get('/admin/terminos/publico');
+        return response.data;
+    },
+
+    // Eliminar documento
     deleteDocumento: async () => {
-        const response = await api.delete('/admin/politicas/documento');
+        const response = await api.delete('/admin/terminos');
+        return response.data;
+    },
+
+    // Verificar si existe documento
+    existeDocumento: async () => {
+        const response = await api.get('/admin/terminos/existe');
         return response.data;
     }
 };

@@ -4,6 +4,9 @@ import { useParams, Link } from "react-router-dom";
 import { useLocation } from "react-router-dom";
 
 import { peticionesService } from "../../services/peticionesService";
+import { authService } from "../../services/authService";
+import { propuestaService } from "../../services/propuestaService";
+import { perfilService } from '../../services/perfilService';
 
 // Colores para categorías y estilos (mismos que en Peticiones)
 const categoryColors = {
@@ -23,63 +26,32 @@ const styleColors = {
   "Vintage": "#d35400"
 };
 
-const peticiones = [
-  {
-    id: 1,
-    nombre: "Lorena Peralta",
-    tiempoPublicacion: "Hace 2 horas",
-    titulo: "Retrato Fotográfico en Acuarela",
-    descripcion:
-      "Estoy buscando un artista que pueda realizar un retrato en acuarela basado en una fotografía personal. El objetivo es convertir la imagen en una pieza artística que conserve los rasgos principales, pero que también refleje un estilo delicado, expresivo y creativo propio del artista.",
-    presupuesto: "$2,000 - $3,000 MXN",
-    tiempo: "2 semanas",
-    categoria: "Fotografía",
-    estilo: "Realista"
-  },
-  {
-    id: 2,
-    nombre: "Carlos Méndez",
-    tiempoPublicacion: "Hace 5 horas",
-    titulo: "Diseño de Logotipo Moderno",
-    descripcion:
-      "Busco diseñador gráfico para crear identidad visual moderna para mi marca.",
-    presupuesto: "$1,000 - $2,000 MXN",
-    tiempo: "1 semana",
-    categoria: "Arte Digital",
-    estilo: "Moderno"
-  },
-  {
-    id: 3,
-    nombre: "Andrea Ruiz",
-    tiempoPublicacion: "Hace 1 día",
-    titulo: "Ilustración Digital Fantasía",
-    descripcion:
-      "Necesito una ilustración estilo fantasía para portada de libro independiente.",
-    presupuesto: "$3,000 - $4,500 MXN",
-    tiempo: "3 semanas",
-    categoria: "Arte Digital",
-    estilo: "Fantasía"
-  },
-];
+function formatearFecha(fecha) {
+  if (!fecha) return '';
 
-  function formatearFecha(fecha) {
-    if (!fecha) return '';
+  return new Date(fecha).toLocaleDateString('es-MX', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+}
 
-    return new Date(fecha).toLocaleDateString('es-MX', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  }
+function formatearPrecio(precio) {
+  if (precio == null) return '';
 
-  function formatearPrecio(precio) {
-    if (precio == null) return '';
+  return new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: 'MXN'
+  }).format(precio);
+}
 
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN'
-    }).format(precio);
-  }
+// Función para obtener iniciales
+const getInitials = (nombre) => {
+  if (!nombre) return '?';
+  const nombres = nombre.split(' ');
+  if (nombres.length === 1) return nombres[0].charAt(0).toUpperCase();
+  return (nombres[0].charAt(0) + nombres[nombres.length - 1].charAt(0)).toUpperCase();
+};
 
 function DetallePeticion() {
   const { id } = useParams();
@@ -91,19 +63,25 @@ function DetallePeticion() {
   const [tiempoEntrega, setTiempoEntrega] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [peticiones, setPeticiones] = useState([]);
+  const [fotoPerfil, setFotoPerfil] = useState(null);
 
   useEffect(() => {
-      cargarDatos();
+    cargarDatos();
   }, [id]);
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   const cargarDatos = async () => {
     setLoading(true);
     try {
       const peticionesData = await peticionesService.getPeticionesById(id);
       setPeticiones(peticionesData);
+      
+      // Cargar foto de perfil del creador
+      if (peticionesData?.creador_id) {
+        await cargarFotoPerfil(peticionesData.creador_id);
+      }
     } catch (err) {
       console.error('Error cargando datos:', err);
       setError('Error al cargar los datos');
@@ -112,32 +90,52 @@ function DetallePeticion() {
     }
   };
 
-  const handleSubmit = () => {
-    const propuesta = {
-      peticionId: peticion.id,
-      mensaje,
-      precio,
-      tiempoEntrega,
-    };
+  const cargarFotoPerfil = async (creadorId) => {
+    try {
+      const perfilData = await perfilService.getPerfilPublico(creadorId);
+      if (perfilData.foto_perfil_url) {
+        setFotoPerfil(perfilData.foto_perfil_url);
+      }
+    } catch (error) {
+      console.error('Error cargando foto del creador:', error);
+    }
+  };
 
-    console.log("Propuesta enviada:", propuesta);
-    
-    // Limpiar formulario
-    setMensaje("");
-    setPrecio("");
-    setTiempoEntrega("");
-    setMostrarFormulario(false);
-    
-    // Mostrar modal de éxito
-    setShowSuccessModal(true);
+  const user = authService.getCurrentUser();
+  const isMyPeticion = user?.id === peticiones.creador_id;
+
+  const handleSubmit = async () => {
+    try {
+      const propuesta = {
+        peticion_id: peticion.id,
+        artista_id: user.id,
+        mensaje,
+        precio_oferta_mxn: precio,
+        tiempo_entrega_semanas: tiempoEntrega,
+      };
+
+      console.log("Propuesta enviada:", propuesta);
+
+      await propuestaService.postPropuesta(propuesta);
+
+      setShowSuccessModal(true);
+
+      setMensaje("");
+      setPrecio("");
+      setTiempoEntrega("");
+
+    } catch (error) {
+      console.error(error);
+      alert("Error al enviar la propuesta");
+    }
   };
 
   if (loading) {
     return (
       <div className="d-flex justify-content-center align-items-center" style={{ height: '400px' }}>
-          <div className="spinner-border text-primary" role="status">
+        <div className="spinner-border text-primary" role="status">
           <span className="visually-hidden">Cargando...</span>
-          </div>
+        </div>
       </div>
     );
   }
@@ -145,7 +143,7 @@ function DetallePeticion() {
   if (error) {
     return (
       <div className="alert alert-danger m-3">
-          {error}
+        {error}
       </div>
     );
   }
@@ -170,19 +168,51 @@ function DetallePeticion() {
 
       <div className="premium-bg mb-5 mt-4">
         <Container>
-          <Card className="shadow-sm p-4 border rounded-4 py-4">
+          <Card className="shadow-sm p-4 border rounded-4 py-4" 
+            style={{
+              maxWidth: isMyPeticion ? "800px" : ""
+            }}>
             <Row>
               {/* COLUMNA IZQUIERDA */}
-              <Col md={7}>
+              <Col md={isMyPeticion ? 12 : 7}>
                 <div className="d-flex align-items-center mb-3">
-                  <div className="d-flex justify-content-center align-items-center shadow-sm me-3" style={{ width: "55px", height: "55px", backgroundColor: "#E8B767", borderRadius: "10px" }}>
-                    <i className="bi bi-person fs-4 color-1"></i>
+                  {/* Foto de perfil del creador */}
+                  <div className="d-flex justify-content-center align-items-center shadow-sm me-3 overflow-hidden" 
+                    style={{ 
+                      width: "55px", 
+                      height: "55px", 
+                      backgroundColor: "#f3e1c7", 
+                      borderRadius: "10%",
+                      border: "2px solid #853204",
+                      hover: { borderColor: "#ffffff" },
+                      flexShrink: 0
+                    }}>
+                    {fotoPerfil ? (
+                      <img 
+                        src={fotoPerfil} 
+                        alt={`Foto de ${peticiones.creador_nombre || 'Usuario'}`}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover'
+                        }}
+                      />
+                    ) : (
+                      <span className="fw-bold color-1" style={{ fontSize: '18px' }}>
+                        {getInitials(peticiones.creador_nombre || 'Usuario')}
+                      </span>
+                    )}
                   </div>
 
                   <div className="d-flex flex-column align-items-start">
-                    <h6 className="mb-0 fw-semibold color-1">{peticiones.creador_nombre}</h6>
-                    <small className="text-muted">Publicado {formatearFecha(peticion.fecha_publicacion)}</small>
-                    
+                    <Link
+                      to={`/profile/public/${peticiones.creador_id}`}
+                      className="text-decoration-none"
+                    >
+                      <h6 className="mb-0 fw-semibold color-1"> {isMyPeticion ? "Tú" : peticiones.creador_nombre} </h6>
+                    </Link>
+                    <small className="text-muted">Publicado {formatearFecha(peticiones.fecha_publicacion)}</small>
+
                     {/* CATEGORÍA Y ESTILO */}
                     <div className="d-flex gap-2 mt-2">
                       {peticiones.categoria_nombre && (
@@ -214,10 +244,10 @@ function DetallePeticion() {
                 <h2 className="fw-bold color-2 mb-3">{peticiones.titulo}</h2>
                 <p className="text-muted">{peticiones.descripcion}</p>
 
-                <div className="d-flex justify-content-between align-items-center p-3" style={{ backgroundColor: "#f3f1ee", borderRadius: "14px", maxWidth: "600px" }}>
+                <div className="d-flex justify-content-between align-items-center p-3" style={{ backgroundColor: "#f3f1ee", borderRadius: "14px" }}>
                   <div>
                     <small className="text-muted color-1">PRESUPUESTO</small>
-                    <div className="fw-bold color-1">{formatearPrecio(peticion.presupuesto_min_mxn)} - {formatearPrecio(peticion.presupuesto_max_mxn)}</div>
+                    <div className="fw-bold color-1">{formatearPrecio(peticiones.presupuesto_min_mxn)} - {formatearPrecio(peticiones.presupuesto_max_mxn)}</div>
                   </div>
                   <div>
                     <small className="text-muted color-1">TIEMPO</small>
@@ -227,94 +257,86 @@ function DetallePeticion() {
               </Col>
 
               {/* COLUMNA DERECHA */}
-              <Col md={5} className="mt-4 mt-md-0">
-                <Card className="shadow-sm p-4 rounded-4 border">
-                  {!mostrarFormulario ? (
-                    <>
-                      <h5 className="fw-bold mb-3 color-3">Enviar Propuesta</h5>
+              {!isMyPeticion && (
+                <Col md={5} className="mt-4 mt-md-0">
+                  <Card className="shadow-sm p-4 rounded-4 border">
+                    {!mostrarFormulario ? (
+                      <>
+                        <h5 className="fw-bold mb-3 color-3">Enviar Propuesta</h5>
 
-                      <div className="mb-2">
-                        <i className="bi bi-check-square-fill me-2 color-3"></i>
-                        El creador revisará tu oferta
-                      </div>
-                      <div className="mb-2">
-                        <i className="bi bi-check-square-fill me-2 color-3"></i>
-                        Si le gusta, abrirá un chat privado
-                      </div>
-                      <div className="mb-3">
-                        <i className="bi bi-check-square-fill me-2 color-3"></i>
-                        Se desbloquean botones de seguimiento
-                      </div>
+                        <div className="mb-2">
+                          <i className="bi bi-check-square-fill me-2 color-3"></i>
+                          El creador revisará tu oferta
+                        </div>
+                        <div className="mb-2">
+                          <i className="bi bi-check-square-fill me-2 color-3"></i>
+                          Si le gusta, abrirá un chat privado
+                        </div>
+                        <div className="mb-3">
+                          <i className="bi bi-check-square-fill me-2 color-3"></i>
+                          Se desbloquean botones de seguimiento
+                        </div>
 
-                      <div className="d-flex justify-content-between align-items-center px-3 py-2 mb-3" style={{ backgroundColor: "#f4e1c7", borderRadius: "10px", fontSize: "14px" }}>
-                        <span className="color-2 fw-bold">Costo de propuesta</span>
-                        <i className="bi bi-ticket-perforated fs-7 color-3 fw-bold"> -5</i>
-                      </div>
+                        <Button className="btn-2" onClick={() => setMostrarFormulario(true)}>
+                          <i className="bi bi-arrow-up-right me-2"></i> POSTULARME AHORA
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <h5 className="fw-bold mb-3 color-3">Enviar Propuesta</h5>
+                        <div className="mb-2">
+                          <i className="bi bi-check-square-fill me-2 color-3"></i>
+                          El creador revisará tu oferta
+                        </div>
+                        <div className="mb-2">
+                          <i className="bi bi-check-square-fill me-2 color-3"></i>
+                          Si le gusta, abrirá un chat privado
+                        </div>
+                        <div className="mb-3">
+                          <i className="bi bi-check-square-fill me-2 color-3"></i>
+                          Se desbloquean botones de seguimiento
+                        </div>
 
-                      <Button className="btn-2" onClick={() => setMostrarFormulario(true)}>
-                        <i className="bi bi-arrow-up-right me-2"></i> POSTULARME AHORA
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <h5 className="fw-bold mb-3 color-3">Enviar Propuesta</h5>
-                      <div className="mb-2">
-                        <i className="bi bi-check-square-fill me-2 color-3"></i>
-                        El creador revisará tu oferta
-                      </div>
-                      <div className="mb-2">
-                        <i className="bi bi-check-square-fill me-2 color-3"></i>
-                        Si le gusta, abrirá un chat privado
-                      </div>
-                      <div className="mb-3">
-                        <i className="bi bi-check-square-fill me-2 color-3"></i>
-                        Se desbloquean botones de seguimiento
-                      </div>
-
-                      <div className="d-flex justify-content-between align-items-center px-3 py-2 mb-3" style={{ backgroundColor: "#f4e1c7", borderRadius: "10px", fontSize: "14px" }}>
-                        <span className="color-2 fw-bold">Costo de propuesta</span>
-                        <i className="bi bi-ticket-perforated fs-7 color-3 fw-bold"> -5</i>
-                      </div>
-
-                      <Form.Group className="mb-3">
-                        <Form.Control
-                          placeholder="Escribe tu mensaje al creador..."
-                          as="textarea"
-                          rows={3}
-                          value={mensaje}
-                          onChange={(e) => setMensaje(e.target.value)}
-                        />
-                      </Form.Group>
-
-                      <div className="d-flex justify-content-between align-items-center gap-2">
-                        <Form.Group className="mb-3 flex-grow-1">
+                        <Form.Group className="mb-3">
                           <Form.Control
-                            placeholder="Tu precio"
-                            value={precio}
-                            onChange={(e) => setPrecio(e.target.value)}
+                            placeholder="Escribe tu mensaje al creador..."
+                            as="textarea"
+                            rows={3}
+                            value={mensaje}
+                            onChange={(e) => setMensaje(e.target.value)}
                           />
                         </Form.Group>
-                        <Form.Group className="mb-3 flex-grow-1">
-                          <Form.Control
-                            placeholder="Tiempo"
-                            value={tiempoEntrega}
-                            onChange={(e) => setTiempoEntrega(e.target.value)}
-                          />
-                        </Form.Group>
-                      </div>
 
-                      <Button className="btn-2 w-100" onClick={handleSubmit}>
-                        <i className="bi bi-send me-2"></i> ENVIAR PROPUESTA
-                      </Button>
-                      <Button className="flex-grow-1 rounded-pill py-2 w-100 mt-2" 
-                       variant="outline-secondary"
-                                         onClick={() => setMostrarFormulario(false)}>
-                        CANCELAR
-                      </Button>
-                    </>
-                  )}
-                </Card>
-              </Col>
+                        <div className="d-flex justify-content-between align-items-center gap-2">
+                          <Form.Group className="mb-3 flex-grow-1">
+                            <Form.Control
+                              placeholder="Tu precio"
+                              value={precio}
+                              onChange={(e) => setPrecio(e.target.value)}
+                            />
+                          </Form.Group>
+                          <Form.Group className="mb-3 flex-grow-1">
+                            <Form.Control
+                              placeholder="Tiempo"
+                              value={tiempoEntrega}
+                              onChange={(e) => setTiempoEntrega(e.target.value)}
+                            />
+                          </Form.Group>
+                        </div>
+
+                        <Button className="btn-2 w-100" onClick={handleSubmit}>
+                          <i className="bi bi-send me-2"></i> ENVIAR PROPUESTA
+                        </Button>
+                        <Button className="flex-grow-1 rounded-pill py-2 w-100 mt-2" 
+                          variant="outline-secondary"
+                          onClick={() => setMostrarFormulario(false)}>
+                          CANCELAR
+                        </Button>
+                      </>
+                    )}
+                  </Card>
+                </Col>
+              )}
             </Row>
           </Card>
         </Container>

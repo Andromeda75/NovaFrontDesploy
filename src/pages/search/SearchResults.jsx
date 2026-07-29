@@ -1,6 +1,33 @@
+// frontend/src/pages/search/SearchResults.jsx
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, Spinner } from 'react-bootstrap';
+
+// Función para formatear a 1 decimal
+const formatearCalificacion = (valor) => {
+    if (valor === undefined || valor === null || isNaN(valor)) return '0.0';
+    return Number(valor).toFixed(1);
+};
+
+// ========== MAPEO DE CATEGORÍAS CON SUS IMÁGENES ==========
+const categoriaImagenes = {
+    'Arte Digital': '../src/assets/img/iconos/Tab.png',
+    'Arte Visual': '../src/assets/img/iconos/Art.png',
+    'Fotografía': '../src/assets/img/iconos/Cam.png',
+    'Escultura': '../src/assets/img/iconos/Head.png',
+    'Artesanías': '../src/assets/img/iconos/Han.png',
+    'Coleccionables': '../src/assets/img/iconos/Cua.png'
+};
+
+// ========== MAPEO DE CATEGORÍAS A RUTAS ==========
+const categoriaRutas = {
+    'Arte Visual': '/categoriaAV',
+    'Arte Digital': '/categoriaAD',
+    'Fotografía': '/categoriaF',
+    'Escultura': '/categoriaE',
+    'Artesanías': '/categoriaA',
+    'Coleccionables': '/categoriaC'
+};
 
 function SearchResults() {
     const location = useLocation();
@@ -48,7 +75,7 @@ function SearchResults() {
                                 }}
                             />
                             <Card.Body>
-                                <Badge bg="secondary" className="mb-2">{item.categoria || 'Arte'}</Badge>
+                                <span className="badge bg-secondary mb-2">{item.categoria || 'Arte'}</span>
                                 <Card.Title className="fw-bold color-1 fs-6">{item.titulo}</Card.Title>
                                 <Card.Text className="text-muted small">
                                     {item.descripcion?.substring(0, 80)}...
@@ -84,7 +111,7 @@ function SearchResults() {
                                 <span className="position-absolute top-0 end-0 m-2 px-2 py-1 bg-success text-white rounded-pill small">SUBASTA</span>
                             </div>
                             <Card.Body>
-                                <Badge bg="secondary" className="mb-2">{item.categoria || 'Arte'}</Badge>
+                                <span className="badge bg-secondary mb-2">{item.categoria || 'Arte'}</span>
                                 <Card.Title className="fw-bold color-1 fs-6">{item.titulo}</Card.Title>
                                 <Card.Text className="text-muted small">
                                     {item.descripcion?.substring(0, 80)}...
@@ -130,7 +157,7 @@ function SearchResults() {
                                 </Card.Text>
                                 <div className="d-flex align-items-center gap-2 mb-3">
                                     <i className="bi bi-star-fill text-warning"></i>
-                                    <span className="fw-bold small">{item.calificacion_promedio || 0} / 5.0</span>
+                                    <span className="fw-bold small">{formatearCalificacion(item.calificacion_promedio)} / 5.0</span>
                                 </div>
                                 <Button 
                                     variant="outline-primary"
@@ -146,6 +173,9 @@ function SearchResults() {
                 );
 
             case 'categorias':
+                // Obtener la imagen de la categoría
+                const imagenCategoria = categoriaImagenes[item.nombre] || '../src/assets/img/iconos/Tab.png';
+                
                 return (
                     <Col md={6} lg={4} xl={3} key={`cat-${item.id}`} className="mb-4">
                         <Card className="h-100 shadow-sm border-0 rounded-4 overflow-hidden text-center">
@@ -154,7 +184,11 @@ function SearchResults() {
                                     className="rounded-circle d-flex align-items-center justify-content-center mb-3"
                                     style={{ width: '70px', height: '70px', backgroundColor: '#f0f0f0' }}
                                 >
-                                    <i className="bi bi-tag fs-2 color-3"></i>
+                                    <img 
+                                        src={imagenCategoria} 
+                                        alt={item.nombre} 
+                                        style={{ height: '30px', objectFit: 'contain' }} 
+                                    />
                                 </div>
                                 <Card.Title className="fw-bold color-1 fs-6">{item.nombre}</Card.Title>
                                 <Card.Text className="text-muted small text-center">
@@ -165,15 +199,8 @@ function SearchResults() {
                                     size="sm"
                                     className="rounded-pill px-3 mt-2"
                                     onClick={() => {
-                                        const categoriaMap = {
-                                            'Arte Visual': '/categoriaAV',
-                                            'Arte Digital': '/categoriaAD',
-                                            'Fotografía': '/categoriaF',
-                                            'Escultura': '/categoriaE',
-                                            'Artesanías': '/categoriaA',
-                                            'Coleccionables': '/categoriaC'
-                                        };
-                                        navigate(categoriaMap[item.nombre] || '/');
+                                        const ruta = categoriaRutas[item.nombre] || '/';
+                                        navigate(ruta);
                                     }}
                                 >
                                     Explorar <i className="bi bi-arrow-right ms-1"></i>
@@ -192,7 +219,7 @@ function SearchResults() {
         <Container className="py-5">
             {/* Header */}
             <div className="mb-4 text-center">
-                <h1 className="fw-bold color-1 mb-2">Resultados de búsqueda</h1>
+                <h1 className="fw-bold texto-difuminado-colores mb-2">Resultados de búsqueda</h1>
                 <p className="text-muted">
                     {loading ? 'Buscando...' : `Se encontraron ${total} resultados para "${query}"`}
                 </p>
@@ -277,12 +304,5 @@ function SearchResults() {
         </Container>
     );
 }
-
-// Badge component (no estaba importado)
-const Badge = ({ bg, children, className }) => (
-    <span className={`badge bg-${bg} ${className}`} style={{ fontSize: '10px', padding: '4px 8px' }}>
-        {children}
-    </span>
-);
 
 export default SearchResults;

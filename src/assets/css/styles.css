@@ -21,6 +21,52 @@
   --dfl-cr-bdp-7: #9A5F25;
 
 }
+@keyframes pulse-selected {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+/* Agrega esto a tu archivo CSS o en un style tag */
+.transition-all {
+  transition: all 0.3s ease !important;
+}
+
+.transition-all:hover:not(.btn-active) {
+  background-color: #e9ecef !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Para los botones activos - TODOS con el mismo color */
+.btn-active {
+  background-color: #9A5F25 !important;
+  color: white !important;
+  transform: scale(1.02);
+  box-shadow: 0 4px 8px rgba(154, 95, 37, 0.3);
+  border-color: #9A5F25 !important;
+}
+
+/* Si quieres que también cambie el color del borde en botones outline */
+.btn-outline-secondary.btn-active,
+.btn-outline-success.btn-active,
+.btn-outline-danger.btn-active,
+.btn-outline-warning.btn-active,
+.btn-outline-primary.btn-active {
+  background-color: #9A5F25 !important;
+  color: white !important;
+  border-color: #9A5F25 !important;
+}
+
+/* Para los badges dentro de los botones activos */
+.btn-active .badge {
+  background-color: white !important;
+  color: #9A5F25 !important;
+}
 
 .bg-color-white {
   background-color: var(--dfl-white) !important;
@@ -86,6 +132,39 @@
   transform: scale(0.97);
   box-shadow: 0 3px 8px var(--dfl-cr-1-shadow);
 }
+
+.btn-onda {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-onda::before{
+    content:'';
+    position:absolute;
+    top:0;
+    left:-80%;
+    width:40%;
+    height:100%;
+    background:linear-gradient(
+        120deg,
+        transparent,
+        rgba(255,255,255,.8),
+        transparent
+    );
+    transform:skewX(-20deg);
+    animation: brillo 2s infinite;
+}
+
+@keyframes brillo{
+    0%{
+        left:-80%;
+    }
+
+    100%{
+        left:180%;
+    }
+}
+
 .btn-2 {
   border-radius: 10px;
   background-color:  var(--dfl-cr-2);
@@ -155,6 +234,7 @@
 }
 .color-1 {
   color: var(--dfl-cr-1) !important;
+  
 }
 .color-2 {
   color: var(--dfl-cr-2) !important;
@@ -297,94 +377,4 @@
 .modal-body {
   background-color: #ffffff !important;
   background: #ffffff !important;
-}
-
-
-.loginWrapper {
-  min-height: 100vh;
-  background: #ffffff;
-  overflow: hidden;
-  position: relative;
-}
-
-.ocean { 
-  height: 0%;
-  width:100%;
-  position:absolute;
-  bottom:0;
-  left:0;
-  background: #853204;
-}
-
-.wave {
-  /* background: url(https://s3-us-west-2.amazonaws.com/s.cdpn.io/85486/wave.svg) repeat-x;  */
-  background: url(../Img/wave.svg) repeat-x;
-  position: absolute;
-  top: -120px;
-  width: 6400px;
-  height: 120px;
-  animation: wave 7s cubic-bezier( 0.36, 0.45, 0.63, 0.53) infinite;
-  transform: translate3d(0, 0, 0);
-}
-
-.wave:nth-of-type(2) {
-  top: -175px;
-  animation: wave 7s cubic-bezier( 0.36, 0.45, 0.63, 0.53) -.125s infinite, swell 7s ease -1.25s infinite;
-  opacity: 1;
-}
-
-.oceanTop {
-  height: 0%;
-  width: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-  background: #853204;
-}
-
-.wave {
-  background: url('/img/wave.svg') repeat-x;
-  position: absolute;
-  top: -120px;
-  width: 6400px;
-  height: 120px;
-  animation: wave 7s cubic-bezier(0.36, 0.45, 0.63, 0.53) infinite;
-  transform: translate3d(0, 0, 0);
-}
-
-.waveTop {
-  background: url('/img/wave.svg') repeat-x;
-  position: absolute;
-  bottom: -120px;
-  width: 6400px;
-  height: 120px;
-  transform: rotate(180deg);
-  animation: wave 7s cubic-bezier(0.36, 0.45, 0.63, 0.53) infinite reverse;
-}
-
-@keyframes wave {
-  0% {
-    margin-left: 0;
-  }
-  100% {
-    margin-left: -1600px;
-  }
-}
-
-@keyframes swell {
-  0%, 100% {
-    transform: translate3d(0,-25px,0);
-  }
-  50% {
-    transform: translate3d(0,5px,0);
-  }
-}
-
-@keyframes swell-top {
-  0%, 100% {
-    transform: rotate(180deg) translate3d(0,-25px,0);
-  }
-  50% {
-    transform: rotate(180deg) translate3d(0,5px,0);
-  }
 }

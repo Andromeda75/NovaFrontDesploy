@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Modal, Button } from 'react-bootstrap';
 import { articuloService } from "../../../services/articuloService";
 import { authService } from '../../../services/authService';
@@ -12,6 +12,9 @@ const MisArticulos = () => {
   const [articulos, setArticulos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  // Referencia para el modal body
+  const modalBodyRef = useRef(null);
 
   // Estados para paginación
   const [paginaActual, setPaginaActual] = useState(1);
@@ -27,6 +30,7 @@ const MisArticulos = () => {
   const [showModalArticulo, setShowModalArticulo] = useState(false);
   const [imagenSeleccionada, setImagenSeleccionada] = useState(null);
   const [indiceImagenActual, setIndiceImagenActual] = useState(0);
+  const [certificadoExpandido, setCertificadoExpandido] = useState(false);
   const [formData, setFormData] = useState({
     titulo: "",
     categoria: "",
@@ -36,6 +40,10 @@ const MisArticulos = () => {
     video: null,
     documento: null
   });
+
+  // 👇 NUEVOS ESTADOS PARA MODAL DE VALIDACIÓN
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [validationMessage, setValidationMessage] = useState('');
 
   // Mapeo de categorías a IDs
   const categoriaMap = {
@@ -127,7 +135,9 @@ const MisArticulos = () => {
         img3: art.foto3_url || null,
         video: art.video_url || null,
         documento: art.documento_url || null,
-        descripcion: art.descripcion || "Sin descripción"
+        descripcion: art.descripcion || "Sin descripción",
+        observaciones: art.observacion || null,
+        fecha_rechazo: art.fecha_rechazo || null
       }));
       setArticulos(articulosFormateados);
     } catch (err) {
@@ -139,20 +149,32 @@ const MisArticulos = () => {
   };
 
   // Función para determinar el tipo de pestaña según el estado
-const obtenerTipoPorEstado = (estadoNombre) => {
+  const obtenerTipoPorEstado = (estadoNombre) => {
     switch (estadoNombre) {
         case 'Publicado':
-            return 'activos';      // Artículos publicados y disponibles
+            return 'activos';
         case 'En revisión':
-            return 'publicados';      // ← CAMBIADO: ahora también aparecen en "activos"
+            return 'publicados';
         case 'Rechazado':
-            return 'pendientes';   // Artículos rechazados (se pueden editar)
+            return 'publicados';
         case 'Vendido':
-            return 'vendidos';     // Artículos ya vendidos
+            return 'vendidos';
         default:
             return 'pendientes';
     }
-};
+  };
+
+  // ========== FUNCIÓN PARA REENVIAR ARTÍCULO RECHAZADO ==========
+  const reenviarArticulo = async (id) => {
+    try {
+      await articuloService.reenviarArticulo(id);
+      await cargarArticulos();
+      showModalMessage('¡Éxito!', 'Artículo reenviado para revisión', 'success');
+    } catch (err) {
+      console.error('Error reenviando artículo:', err);
+      showModalMessage('Error', err.response?.data?.message || 'Error al reenviar el artículo', 'error');
+    }
+  };
 
   // Filtrar artículos por pestaña
   const articulosFiltrados = articulos.filter(
@@ -176,6 +198,7 @@ const obtenerTipoPorEstado = (estadoNombre) => {
       video: null,
       documento: null
     });
+    setCertificadoExpandido(false);
   };
 
   // Manejar cambios en formulario
@@ -270,32 +293,55 @@ const obtenerTipoPorEstado = (estadoNombre) => {
     reader.readAsDataURL(file);
   };
 
-  // Publicar/Guardar artículo
-  const publicarArticulo = async () => {
+  // ========== VALIDACIÓN MEJORADA CON MODAL PERSONALIZADO ==========
+  const validarFormulario = () => {
+    // Validar título
     if (!formData.titulo.trim()) {
-      showModalMessage('Atención', 'Por favor, ingresa un título para el artículo', 'warning');
-      return;
+      setValidationMessage('Por favor, ingresa un título para el artículo');
+      setShowValidationModal(true);
+      return false;
     }
 
+    // Validar categoría
     if (!formData.categoria) {
-      showModalMessage('Atención', 'Por favor, selecciona una categoría', 'warning');
-      return;
+      setValidationMessage('Por favor, selecciona una categoría');
+      setShowValidationModal(true);
+      return false;
     }
 
+    // Validar descripción
     if (!formData.descripcion.trim()) {
-      showModalMessage('Atención', 'Por favor, ingresa una descripción', 'warning');
-      return;
+      setValidationMessage('Por favor, ingresa una descripción');
+      setShowValidationModal(true);
+      return false;
     }
 
+    // Validar precio
     if (!formData.precio || parseFloat(formData.precio) <= 0) {
-      showModalMessage('Atención', 'Por favor, ingresa un precio válido', 'warning');
-      return;
+      setValidationMessage('Por favor, ingresa un precio válido');
+      setShowValidationModal(true);
+      return false;
     }
 
+    // Validar imágenes
     if (formData.imagenes.length < 3) {
       setShowErrorModal(true);
+      return false;
+    }
+
+    // ✅ VALIDACIÓN DE TÉRMINOS ELIMINADA (ya se maneja en el login)
+
+    return true;
+  };
+
+  // Publicar/Guardar artículo (MODIFICADO)
+  const publicarArticulo = async () => {
+    // 👇 USAR LA NUEVA VALIDACIÓN
+    if (!validarFormulario()) {
       return;
     }
+
+    setShowValidationModal(false);
 
     try {
       const categoriaId = categoriaMap[formData.categoria];
@@ -313,8 +359,9 @@ const obtenerTipoPorEstado = (estadoNombre) => {
         imagenes: formData.imagenes,
         video: formData.video || null,
         documento: formData.documento || null
+        // ✅ terminos_aceptados ELIMINADO
       };
-
+      
       if (editando) {
         await articuloService.actualizarArticulo(editando, dataToSend);
       } else {
@@ -331,6 +378,17 @@ const obtenerTipoPorEstado = (estadoNombre) => {
       console.error('Error publicando artículo:', err);
       showModalMessage('Error', err.response?.data?.message || 'Error al publicar el artículo', 'error');
     }
+  };
+
+  // Función para toggle del certificado con ajuste de scroll
+  const toggleCertificado = () => {
+    setCertificadoExpandido(!certificadoExpandido);
+    
+    setTimeout(() => {
+      if (modalBodyRef.current) {
+        modalBodyRef.current.scrollTop = modalBodyRef.current.scrollHeight;
+      }
+    }, 150);
   };
 
   // Editar artículo
@@ -350,7 +408,14 @@ const obtenerTipoPorEstado = (estadoNombre) => {
       documento: articulo.documento || null
     });
     setPaso(1);
+    setCertificadoExpandido(!!articulo.documento);
     setShowModalArticulo(true);
+    
+    setTimeout(() => {
+      if (modalBodyRef.current && !!articulo.documento) {
+        modalBodyRef.current.scrollTop = modalBodyRef.current.scrollHeight;
+      }
+    }, 300);
   };
 
   // Abrir modal para crear nuevo artículo
@@ -358,6 +423,7 @@ const obtenerTipoPorEstado = (estadoNombre) => {
     resetFormulario();
     setEditando(null);
     setPaso(1);
+    setCertificadoExpandido(false);
     setShowModalArticulo(true);
   };
 
@@ -437,14 +503,12 @@ const obtenerTipoPorEstado = (estadoNombre) => {
     switch (estado) {
       case "APROBADO":
         return { bg: "#fffffff5", color: "#198754", border: "#198754", icon: "bi-check-circle-fill" };
-      case "EN REVISION":
-        return { bg: "#fffffff5", color: "#e65100", border: "#e65100", icon: "bi-clock-history" };
       case "RECHAZADO":
         return { bg: "#fffffff5", color: "#b02a37", border: "#b02a37", icon: "bi-x-circle-fill" };
       case "VENDIDO":
         return { bg: "#fffffff5", color: "#198754", border: "#198754", icon: "bi-cart-check-fill" };
       default:
-        return { bg: "#fffffff5", color: "#495057", border: "#495057", icon: "bi-question-circle" };
+        return { bg: "#fffffff5", color: "#495057", border: "#495057", icon: "bi-clock-history" };
     }
   };
 
@@ -489,19 +553,97 @@ const obtenerTipoPorEstado = (estadoNombre) => {
               </button>
             </div>
 
-            <div className="d-flex mb-4 p-1 gap-2 rounded-pill shadow-sm color-2" style={{ backgroundColor: '#f6d8a8', width: 'fit-content' }} >
-              {["activos", "publicados", "vendidos"].map((tab) => (
-                <button
-                  key={tab}
-                  className={`btn rounded-pill px-4 fw-bold small color-2 ${tabActiva === tab ? 'bg-white shadow-sm' : 'opacity-75'}`}
-                  onClick={() => {
-                    setTabActiva(tab);
-                    setPaginaActual(1);
-                  }}
-                >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
-              ))}
+            {/* FILTROS PRINCIPALES - ESTILO PESTAÑAS CON LÍNEA */}
+            <div className="d-flex gap-4 border-bottom border-2 pb-2 mb-4" style={{ borderColor: '#e0e0e0' }}>
+              <button
+                onClick={() => {
+                  setTabActiva("activos");
+                  setPaginaActual(1);
+                }}
+                className="btn btn-link text-decoration-none p-0 position-relative"
+                style={{ 
+                  fontSize: '16px',
+                  fontWeight: tabActiva === "activos" ? 600 : 400,
+                  color: tabActiva === "activos" ? '#9A5F25' : '#6c757d',
+                  transition: 'all 0.3s ease',
+                  paddingBottom: '10px'
+                }}
+              >
+                Activos
+                {tabActiva === "activos" && (
+                  <span 
+                    className="position-absolute"
+                    style={{
+                      bottom: '-10px',
+                      left: 0,
+                      right: 0,
+                      height: '3px',
+                      backgroundColor: '#9A5F25',
+                      borderRadius: '2px'
+                    }}
+                  />
+                )}
+              </button>
+
+              <button
+                onClick={() => {
+                  setTabActiva("publicados");
+                  setPaginaActual(1);
+                }}
+                className="btn btn-link text-decoration-none p-0 position-relative"
+                style={{ 
+                  fontSize: '16px',
+                  fontWeight: tabActiva === "publicados" ? 600 : 400,
+                  color: tabActiva === "publicados" ? '#9A5F25' : '#6c757d',
+                  transition: 'all 0.3s ease',
+                  paddingBottom: '10px'
+                }}
+              >
+                Publicados
+                {tabActiva === "publicados" && (
+                  <span 
+                    className="position-absolute"
+                    style={{
+                      bottom: '-10px',
+                      left: 0,
+                      right: 0,
+                      height: '3px',
+                      backgroundColor: '#9A5F25',
+                      borderRadius: '2px'
+                    }}
+                  />
+                )}
+              </button>
+
+              <button
+                onClick={() => {
+                  setTabActiva("vendidos");
+                  setPaginaActual(1);
+                }}
+                className="btn btn-link text-decoration-none p-0 position-relative"
+                style={{ 
+                  fontSize: '16px',
+                  fontWeight: tabActiva === "vendidos" ? 600 : 400,
+                  color: tabActiva === "vendidos" ? '#9A5F25' : '#6c757d',
+                  transition: 'all 0.3s ease',
+                  paddingBottom: '10px'
+                }}
+              >
+                Vendidos
+                {tabActiva === "vendidos" && (
+                  <span 
+                    className="position-absolute"
+                    style={{
+                      bottom: '-10px',
+                      left: 0,
+                      right: 0,
+                      height: '3px',
+                      backgroundColor: '#9A5F25',
+                      borderRadius: '2px'
+                    }}
+                  />
+                )}
+              </button>
             </div>
 
             <div className="row g-3">
@@ -583,6 +725,46 @@ const obtenerTipoPorEstado = (estadoNombre) => {
                           <p className="small text-muted mb-2 flex-grow-1" style={{ fontSize: '10px', lineHeight: '1.3' }}>
                             {articulo.descripcion.length > 50 ? articulo.descripcion.substring(0, 50) + '...' : articulo.descripcion}
                           </p>
+                          
+                          {/* 👇 MOSTRAR OBSERVACIONES SI ESTÁ RECHAZADO */}
+                          {articulo.estado === 'RECHAZADO' && articulo.observaciones && (
+                            <div 
+                              className="mt-2 p-2 rounded-3 border border-danger" 
+                              style={{ 
+                                backgroundColor: '#fff5f5', 
+                                fontSize: '10px',
+                                borderLeft: '3px solid #dc3545'
+                              }}
+                            >
+                              <div className="d-flex align-items-start gap-1">
+                                <i className="bi bi-exclamation-circle text-danger mt-1" style={{ fontSize: '11px' }}></i>
+                                <div>
+                                  <small className="text-danger fw-bold d-block">Observaciones:</small>
+                                  <small className="text-muted">{articulo.observaciones}</small>
+                                  {articulo.fecha_rechazo && (
+                                    <small className="text-muted d-block mt-1" style={{ fontSize: '8px' }}>
+                                      Rechazado: {new Date(articulo.fecha_rechazo).toLocaleDateString('es-ES')}
+                                    </small>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 👇 BOTÓN REENVIAR - SOLO PARA RECHAZADOS */}
+                          {articulo.estado === 'RECHAZADO' && (
+                            <button
+                              className="btn-linear-gradient btn btn-sm w-100 mt-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                reenviarArticulo(articulo.id);
+                              }}
+                              style={{ borderRadius: '20px', fontSize: '10px' }}
+                            >
+                              <i className="bi bi-arrow-repeat me-1"></i> Corregir y Reenviar
+                            </button>
+                          )}
+
                           <div className="d-flex justify-content-between align-items-center mt-auto pt-1 border-top">
                             <div>
                               <small className="text-muted d-block" style={{ fontSize: '8px' }}>FECHA</small>
@@ -657,7 +839,7 @@ const obtenerTipoPorEstado = (estadoNombre) => {
         dialogClassName="modal-xl"
         contentClassName="border-0 shadow-lg overflow-hidden"
         centered
-        style={{ borderRadius: '25px' }}
+        style={{ borderRadius: '25px', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)' }}
       >
         <div className="bg-white p-4">
           <button
@@ -838,7 +1020,38 @@ const obtenerTipoPorEstado = (estadoNombre) => {
                     </div>
                   </div>
 
-                  <div className="mb-3">
+                  {/* 👇 MOSTRAR OBSERVACIONES EN EL MODAL DE DETALLE */}
+                  {articuloSeleccionado.estado === 'RECHAZADO' && articuloSeleccionado.observaciones && (
+                    <div className="alert alert-danger rounded-4 mb-3 p-3">
+                      <h6 className="fw-bold mb-1">
+                        <i className="bi bi-exclamation-circle-fill me-2"></i>
+                        Motivo de rechazo
+                      </h6>
+                      <p className="mb-0 small">{articuloSeleccionado.observaciones}</p>
+                      {articuloSeleccionado.fecha_rechazo && (
+                        <small className="text-muted d-block mt-1">
+                          Rechazado: {new Date(articuloSeleccionado.fecha_rechazo).toLocaleDateString('es-ES')}
+                        </small>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 👇 BOTÓN REENVIAR EN EL MODAL */}
+                  {articuloSeleccionado.estado === 'RECHAZADO' && (
+                    <button
+                      className="btn-linear-gradient btn w-100 "
+                      onClick={() => {
+                        setShowDetalleModal(false);
+                        reenviarArticulo(articuloSeleccionado.id);
+                      }}
+                      style={{ borderRadius: '20px' }}
+                    >
+                      <i className="bi bi-arrow-repeat me-2"></i>
+                      Corregir y Reenviar
+                    </button>
+                  )}
+
+                  <div className="mb-3 mt-4">
                     <h6 className="fw-bold mb-2" style={{ color: '#4a2311', fontSize: '18px' }}>Descripción detallada</h6>
                     <p className="text-muted small lh-base" style={{ fontSize: '15px' }}>
                       {articuloSeleccionado.descripcion}
@@ -858,7 +1071,7 @@ const obtenerTipoPorEstado = (estadoNombre) => {
         dialogClassName="modal-lg"
         contentClassName="border-0 shadow-lg overflow-hidden"
         centered
-        style={{ borderRadius: "25px" }}
+        style={{ borderRadius: "25px", backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)' }}
       >
         <div className="p-4 text-center text-white" style={{ background: 'linear-gradient(to right, #2a140a, #8d4925)' }}>
           <h2 className="fw-bold mb-1 fs-4">{editando ? "Editar Artículo" : "Publica tu obra maestra"}</h2>
@@ -877,7 +1090,11 @@ const obtenerTipoPorEstado = (estadoNombre) => {
           </div>
         </div>
 
-        <div className="modal-body p-4 bg-white" style={{ overflowY: 'auto', maxHeight: "60vh" }}>
+        <div 
+          className="modal-body p-4 bg-white" 
+          ref={modalBodyRef}
+          style={{ overflowY: 'auto', maxHeight: "60vh" }}
+        >
           {paso === 1 && (
             <div className="row g-3 animate__animated animate__fadeIn">
               <div className="col-12 text-start">
@@ -941,7 +1158,7 @@ const obtenerTipoPorEstado = (estadoNombre) => {
                         <i className="bi bi-images fs-3 color-2"></i>
                       </div>
                       <div>
-                        <h6 className="fw-bold mb-1 color-1">Subir Fotos</h6>
+                        <h6 className="fw-bold mb-1 color-1">Subir Fotos <span className="text-danger">*</span></h6>
                         <p className="text-muted small mb-0">Mínimo 3 fotos de alta resolución</p>
                       </div>
                     </div>
@@ -1059,72 +1276,99 @@ const obtenerTipoPorEstado = (estadoNombre) => {
                   </div>
                 </div>
 
+                {/* Sección de Certificado - Ahora colapsable */}
                 <div className="col-md-12">
-                  <div className="border rounded-4 p-4 bg-white shadow-sm" style={{ border: '1px solid #e0e0e0' }}>
-                    <div className="d-flex align-items-center gap-3 mb-3">
-                      <div className="bg-light rounded-3 p-2">
-                        <i className="bi bi-file-pdf fs-3 color-2"></i>
+                  <div 
+                    className="border rounded-4 bg-white shadow-sm" 
+                    style={{ border: '1px solid #e0e0e0', overflow: 'hidden' }}
+                  >
+                    {/* Header del certificado - siempre visible */}
+                    <div 
+                      className="p-3 d-flex align-items-center justify-content-between"
+                      style={{ cursor: 'pointer', backgroundColor: certificadoExpandido ? '#f8f9fa' : 'transparent' }}
+                      onClick={toggleCertificado}
+                    >
+                      <div className="d-flex align-items-center gap-3">
+                        <div className="bg-light rounded-3 p-2">
+                          <i className="bi bi-file-pdf fs-3 color-2"></i>
+                        </div>
+                        <div>
+                          <h6 className="fw-bold mb-0 color-1">Certificado / Constancia</h6>
+                          <p className="text-muted small mb-0">Opcional - Sube un documento PDF</p>
+                        </div>
                       </div>
-                      <div>
-                        <h6 className="fw-bold mb-1 color-1">Documento</h6>
-                        <p className="text-muted small mb-0">Certificado / Constancia (PDF)</p>
-                      </div>
+                      <i className={`bi bi-chevron-${certificadoExpandido ? 'up' : 'down'} color-2 fs-4`}></i>
                     </div>
 
-                    <div
-                      className="border rounded-3 d-flex flex-column align-items-center justify-content-center bg-light position-relative"
-                      style={{
-                        height: "80px",
-                        backgroundColor: formData.documento ? '#e8f5e9' : '#f8f9fa',
-                        cursor: formData.documento ? 'default' : 'pointer'
-                      }}
-                    >
-                      {formData.documento ? (
-                        <>
-                          <div className="d-flex align-items-center gap-2">
-                            <i className="bi bi-file-earmark-pdf-fill text-danger"></i>
-                            <span className="text-muted small">PDF cargado</span>
-                          </div>
-                          <button
-                            type="button"
-                            className="btn btn-sm rounded-circle bg-white position-absolute top-0 end-0 m-1 d-flex align-items-center justify-content-center shadow-sm"
-                            style={{ width: '22px', height: '22px', padding: 0 }}
-                            onClick={() => setFormData(prev => ({ ...prev, documento: null }))}
-                          >
-                            <i className="bi bi-x small"></i>
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <input
-                            type="file"
-                            accept=".pdf"
-                            className="position-absolute w-100 h-100 opacity-0"
-                            style={{ top: 0, left: 0, cursor: 'pointer' }}
-                            onChange={handleDocumentUpload}
-                          />
-                          <i className="bi bi-upload fs-5 color-2"></i>
-                          <small className="text-muted">Haz clic para subir</small>
-                        </>
-                      )}
-                    </div>
+                    {/* Contenido del certificado - colapsable */}
+                    {certificadoExpandido && (
+                      <div className="p-3 pt-0" style={{ borderTop: '1px solid #e0e0e0' }}>
+                        <div
+                          className="border rounded-3 d-flex flex-column align-items-center justify-content-center bg-light position-relative"
+                          style={{
+                            height: "80px",
+                            backgroundColor: formData.documento ? '#e8f5e9' : '#f8f9fa',
+                            cursor: formData.documento ? 'default' : 'pointer'
+                          }}
+                        >
+                          {formData.documento ? (
+                            <>
+                              <div className="d-flex align-items-center gap-2">
+                                <i className="bi bi-file-earmark-pdf-fill text-danger fs-4"></i>
+                                <div className="text-start">
+                                  <span className="text-muted small d-block">PDF cargado</span>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-link text-danger p-0 mt-1"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const pdfWindow = window.open('', '_blank');
+                                      if (pdfWindow) {
+                                        pdfWindow.document.write(`
+                                          <iframe src="${formData.documento}" style="width:100%;height:100%;border:none;"></iframe>
+                                        `);
+                                      }
+                                    }}
+                                  >
+                                    Ver documento
+                                  </button>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                className="btn btn-sm rounded-circle bg-white position-absolute top-0 end-0 m-1 d-flex align-items-center justify-content-center shadow-sm"
+                                style={{ width: '22px', height: '22px', padding: 0 }}
+                                onClick={() => setFormData(prev => ({ ...prev, documento: null }))}
+                              >
+                                <i className="bi bi-x small"></i>
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <input
+                                type="file"
+                                accept=".pdf"
+                                className="position-absolute w-100 h-100 opacity-0"
+                                style={{ top: 0, left: 0, cursor: 'pointer' }}
+                                onChange={handleDocumentUpload}
+                              />
+                              <i className="bi bi-upload fs-5 color-2"></i>
+                              <small className="text-muted">Haz clic para subir tu certificado</small>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
-
-              {formData.imagenes.length < 3 && (
-                <div className="alert alert-warning mt-4 small rounded-3" style={{ border: '1px solid #ffeeba' }}>
-                  <i className="bi bi-exclamation-triangle me-2"></i>
-                  Debes subir al menos <strong>3 fotos</strong> para continuar
-                </div>
-              )}
             </div>
           )}
 
           {paso === 3 && (
             <div className="animate__animated animate__fadeIn text-start">
               <div className="mb-3">
-                <label className="fw-bold mb-1 small color-2">Precio (MXN)</label>
+                <label className="fw-bold mb-1 small color-2">Precio (MXN) <span className="text-danger">*</span></label>
                 <input
                   type="number"
                   name="precio"
@@ -1137,16 +1381,12 @@ const obtenerTipoPorEstado = (estadoNombre) => {
                 />
               </div>
 
-              <div className="form-check mb-3">
-                <input className="form-check-input" type="checkbox" id="terminos" />
-                <label className="form-check-label small fw-bold color-2" htmlFor="terminos">
-                  Acepto los términos y las comisiones de la plataforma (3%)
-                </label>
-              </div>
+              {/* ✅ CHECKBOX DE TÉRMINOS ELIMINADO */}
 
-              <div className="alert py-2 px-3 small border-0 color-2" style={{ backgroundColor: '#f6d8a8', borderRadius: '12px' }}>
-                <h6 className="fw-bold mb-1"> <i className="bi bi-shield-check me-2"></i> Tu seguridad es nuestra prioridad</h6>
-                <p>Todos los artículos pasan por un proceso de verificación manual. Una vez aprobado, recibirás una notificación y tu pieza aparecerá en el feed principal.</p>
+              <div className="alert py-2 px-3 small border-0 color-2" style={{ backgroundColor: '#fce5c0', borderRadius: '12px' }}>
+                <h6 className="fw-bold mb-1"> <i className="bi bi-shield-check "></i> Tu seguridad es nuestra prioridad</h6>
+               <p className="mb-0">Todos los artículos pasan por un proceso de verificación.</p>
+              <p className="py-0">Una vez aprobado, recibirás una notificación y tu pieza aparecerá en el feed principal.</p>
               </div>
             </div>
           )}
@@ -1174,26 +1414,56 @@ const obtenerTipoPorEstado = (estadoNombre) => {
               Siguiente <i className="bi bi-arrow-right ms-1"></i>
             </button>
           ) : (
-            <div className="d-flex align-items-center gap-3">
-              <span className="badge px-3 py-2 rounded-pill fw-bold small color-2" style={{ backgroundColor: '#f6d8a8' }}>
-                - 30 Tickets
-              </span>
-              <button
-                className="btn-linear-gradient py-2 px-3"
-                style={{ borderRadius: '8px', fontSize: '0.85rem' }}
-                onClick={publicarArticulo}
-              >
-                {editando ? "Guardar Cambios" : "Publicar"} <i className="bi bi-check-lg ms-1"></i>
-              </button>
-            </div>
+            <button
+              className="btn-linear-gradient py-2 px-3"
+              style={{ 
+                borderRadius: '8px', 
+                fontSize: '0.85rem'
+              }}
+              onClick={publicarArticulo}
+            >
+              {editando ? "Guardar Cambios" : "Publicar"} <i className="bi bi-check-lg ms-1"></i>
+            </button>
           )}
         </div>
+      </Modal>
+
+      {/* 👇 NUEVO MODAL DE VALIDACIÓN PERSONALIZADO */}
+      <Modal 
+        show={showValidationModal} 
+        onHide={() => setShowValidationModal(false)}
+        centered
+        contentClassName="rounded-5"
+        style={{backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)'}}
+      >
+        <div className="p-3 text-white text-center fw-bold rounded-top-5" 
+          style={{ background: "linear-gradient(to right, #2a140a, #8d4925)", fontSize: "20px" }}>
+          Campos incompletos
+        </div>
+        <Modal.Body className="text-center p-5 bg-light rounded-bottom-5">
+          <div className="d-flex justify-content-center align-items-center mx-auto mb-4" 
+            style={{ width: "90px", height: "90px", backgroundColor: "#fff3cd", borderRadius: "30px" }}>
+            <i className="bi bi-exclamation-triangle-fill fs-1 text-warning"></i>
+          </div>
+          <h3 className="mb-3" style={{ fontSize: "18px" }}>
+            {validationMessage || 'Por favor, completa todos los campos obligatorios'}
+          </h3>
+          <div className="d-flex flex-column gap-3">
+            <button 
+              onClick={() => setShowValidationModal(false)} 
+              className="btn-2" 
+              style={{ borderRadius: "30px", padding: "10px", border: "none", color: "white" }}
+            >
+              Entendido
+            </button>
+          </div>
+        </Modal.Body>
       </Modal>
 
       {/* MODAL DE CONFIRMACIÓN PARA ELIMINAR */}
       <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered contentClassName="rounded-5">
         <div className="p-3 text-white text-center fw-bold rounded-top-5"
-          style={{ background: "linear-gradient(to right, #2a140a, #8d4925)", fontSize: "20px" }}>
+          style={{ background: "linear-gradient(to right, #2a140a, #8d4925)", fontSize: "20px", backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)'}}>
           Confirmar eliminación
         </div>
         <Modal.Body className="text-center p-5 bg-light rounded-bottom-5">
@@ -1221,9 +1491,9 @@ const obtenerTipoPorEstado = (estadoNombre) => {
       </Modal>
 
       {/* MODAL DE ERROR PARA IMÁGENES */}
-      <Modal show={showErrorModal} onHide={() => setShowErrorModal(false)} centered contentClassName="rounded-5">
+      <Modal style={{backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)'}} show={showErrorModal} onHide={() => setShowErrorModal(false)} centered contentClassName="rounded-5">
         <div className="p-3 text-white text-center fw-bold rounded-top-5"
-          style={{ background: "linear-gradient(to right, #2a140a, #8d4925)", fontSize: "20px" }}>
+          style={{ background: "linear-gradient(to right, #2a140a, #8d4925)", fontSize: "20px", backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)' }}>
           Imágenes insuficientes
         </div>
         <Modal.Body className="text-center p-5 bg-light rounded-bottom-5">
@@ -1251,7 +1521,7 @@ const obtenerTipoPorEstado = (estadoNombre) => {
       </Modal>
 
       {/* MODAL DE MENSAJES */}
-      <MensajeModal
+      <MensajeModal style={{backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)'}}
         show={modal.show}
         onHide={hideModal}
         title={modal.title}

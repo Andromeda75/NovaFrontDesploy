@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useState, useEffect } from 'react';
 import { Button } from "react-bootstrap";
 
-const ConfirmarUsuarioModal = ({ show, user, handleClose, cambiarEstadoUsuario }) => {
-  if (!show) return null;
+const ConfirmarUsuarioModal = ({ show, id, estado_id, nombre_completo, handleClose, cambiarEstado }) => {
+  const [razon, setRazon] = useState("");
+  
+    if (!show) return null;
 
   return (
     <>
@@ -18,16 +20,16 @@ const ConfirmarUsuarioModal = ({ show, user, handleClose, cambiarEstadoUsuario }
                     <div className="modal-body text-center p-5 bg-light">
                         {/* ICONO */}
                         <div className="d-flex justify-content-center align-items-center mx-auto mb-4" 
-                            style={{width: "90px", height: "90px", backgroundColor: user.estado === 1 ? "#f8d7da" : "#d1e7dd", borderRadius: "30px"}}>
-                            {user.estado === 1 ? (
+                            style={{width: "90px", height: "90px", backgroundColor: estado_id === 1 ? "#f8d7da" : "#d1e7dd", borderRadius: "30px"}}>
+                            {estado_id === 1 ? (
                                 <i className="bi bi-slash-circle fs-1 text-danger"></i>
                             ) : (
                                 <i className="bi bi-check2-circle fs-1 text-success"></i>
                             )}
                         </div>
-                        <h3 className="fw-bold mb-3">{user.estado === 1 ? "Suspender usuario" : "Reactivar usuario"}</h3>    
+                        <h3 className="fw-bold mb-3">{estado_id === 1 ? `Suspender a ${nombre_completo}` : `Reactivar a ${nombre_completo}`}</h3>    
                         <p className="text-muted mb-4">
-                            {user.estado === 1 ? 
+                            {estado_id === 1 ? 
                                 "Esta acción suspenderá la cuenta del usuario e impedirá su acceso a la plataforma. ¿Deseas continuar?" 
                                 : "Esta acción reactivará la cuenta del usuario. ¿Deseas continuar?"
                             }
@@ -35,7 +37,7 @@ const ConfirmarUsuarioModal = ({ show, user, handleClose, cambiarEstadoUsuario }
                         </p>
 
                         {/* RAZÓN DE SUSPENSIÓN */}
-                        {user.estado === 1 && (
+                        {estado_id === 1 && (
                         <div className="mb-4 text-start">
                             <label className="form-label fw-semibold">
                             Motivo de la suspensión
@@ -45,8 +47,8 @@ const ConfirmarUsuarioModal = ({ show, user, handleClose, cambiarEstadoUsuario }
                             className="form-control"
                             rows="3"
                             placeholder="Escribe la razón por la cual se suspende al usuario..."
-                            // value={razon}
-                            // onChange={(e) => setRazon(e.target.value)}
+                            value={razon}
+                            onChange={(e) => setRazon(e.target.value)}
                             style={{
                                 borderRadius: "12px",
                                 resize: "none"
@@ -61,10 +63,14 @@ const ConfirmarUsuarioModal = ({ show, user, handleClose, cambiarEstadoUsuario }
                         <Button className="btn-2"
                             style={{ borderRadius: "30px", padding: "10px"}}
                             onClick={() => {
-                                cambiarEstadoUsuario(user.id, user.estado === 1 ? 0 : 1); 
+                                cambiarEstado(
+                                    id, 
+                                    estado_id === 1 ? 2 : 1,
+                                    razon
+                                ); 
                                 handleClose();
                             }}>
-                            {user.estado === 1 ? "Suspender" : "Activar"}
+                            {estado_id === 1 ? "Suspender" : "Activar"}
                         </Button>
                         <Button className="btn btn-light border  rounded-pill px-3 py-2 order-2 order-sm-1" 
                             style={{borderRadius: "30px"}}

@@ -8,12 +8,11 @@ function Footer() {
       <div className="row g-4 justify-content-between">
         <div className="col-12 col-md-5 col-lg-4 text-start">
           <div className="d-flex align-items-center mb-3">
-            {/* ✅ RUTA ABSOLUTA - CORREGIDA */}
             <img 
-              src="/img/logos/LogoSecundario.png" 
+              src="/src/assets/img/logos/LogoSecundario.png" 
               alt="Logo" 
               className='col-2' 
-              style={{ width: "100px" }}
+              style={{ width: "80px" }}
             />
           </div>
           <p className="text-muted small fw-bold pe-md-4 color-3" style={{ lineHeight: '1.5' }}>
@@ -57,3 +56,7 @@ function Footer() {
 }
 
 export default Footer;
+      
+      
+      
+      

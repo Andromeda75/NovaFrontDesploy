@@ -40,6 +40,14 @@ function formatearPrecio(precio) {
   }).format(precio);
 }
 
+// Función para obtener iniciales
+const getInitials = (nombre) => {
+  if (!nombre) return '?';
+  const nombres = nombre.split(' ');
+  if (nombres.length === 1) return nombres[0].charAt(0).toUpperCase();
+  return (nombres[0].charAt(0) + nombres[nombres.length - 1].charAt(0)).toUpperCase();
+};
+
 const ArticuloDetalle = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -48,10 +56,15 @@ const ArticuloDetalle = () => {
   const [error, setError] = useState('');
   const [articulo, setArticulo] = useState(null);
   const [perfil, setPerfil] = useState(null);
+  const [fotoPerfil, setFotoPerfil] = useState(null);
   const [metodosPago, setMetodosPago] = useState([]);
   const [metodoPagoSeleccionado, setMetodoPagoSeleccionado] = useState(null);
   const [procesando, setProcesando] = useState(false);
   const [portadaActiva, setPortadaActiva] = useState('');
+  const [indiceImagenActual, setIndiceImagenActual] = useState(0);
+  const [showModalAgregarTarjeta, setShowModalAgregarTarjeta] = useState(false);
+  const [showModalImagen, setShowModalImagen] = useState(false);
+  const [imagenModal, setImagenModal] = useState('');
   
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -87,6 +100,9 @@ const ArticuloDetalle = () => {
       if (articuloData?.vendedor_id) {
         const perfilData = await perfilService.getPerfilPublico(articuloData.vendedor_id);
         setPerfil(perfilData);
+        if (perfilData.foto_perfil_url) {
+          setFotoPerfil(perfilData.foto_perfil_url);
+        }
       }
 
       const favoritoData = await favoriteService.checkFavorite(
@@ -113,7 +129,6 @@ const ArticuloDetalle = () => {
         });
         setIsFavorite(false);
         showModalMessage('Favoritos', 'Eliminado de favoritos', 'success');
-        console.log("Eliminado de favoritos");
       } else {
         await favoriteService.postFavorite({
           tipo: "articulo",
@@ -121,7 +136,6 @@ const ArticuloDetalle = () => {
         });
         setIsFavorite(true);
         showModalMessage('Favoritos', 'Agregado a favoritos', 'success');
-        console.log("Agregado a favoritos");
       }
     } catch (error) {
       console.error(error);
@@ -131,9 +145,7 @@ const ArticuloDetalle = () => {
 
   const cargarMetodosPago = async () => {
     try {
-
       const metodos = await perfilService.getMetodosPago();
-      console.log('Métodos de pago (desde perfilService):', metodos);
       setMetodosPago(metodos);
       if (metodos && metodos.length > 0) {
         setMetodoPagoSeleccionado(metodos[0].id);
@@ -178,10 +190,31 @@ const ArticuloDetalle = () => {
 
   const cambiarImagen = (imgSeleccionada, index) => {
     if (!articulo?.media) return;
-    const nuevasMedia = [...articulo.media];
-    nuevasMedia[index] = portadaActiva;
-    setArticulo({ ...articulo, media: nuevasMedia });
     setPortadaActiva(imgSeleccionada);
+    setIndiceImagenActual(index);
+  };
+
+  const imagenAnterior = () => {
+    if (!articulo?.media || articulo.media.length === 0) return;
+    const nuevoIndice = indiceImagenActual > 0 ? indiceImagenActual - 1 : articulo.media.length - 1;
+    setIndiceImagenActual(nuevoIndice);
+    setPortadaActiva(articulo.media[nuevoIndice]);
+  };
+
+  const imagenSiguiente = () => {
+    if (!articulo?.media || articulo.media.length === 0) return;
+    const nuevoIndice = indiceImagenActual < articulo.media.length - 1 ? indiceImagenActual + 1 : 0;
+    setIndiceImagenActual(nuevoIndice);
+    setPortadaActiva(articulo.media[nuevoIndice]);
+  };
+
+  const abrirModalImagen = (img) => {
+    setImagenModal(img);
+    setShowModalImagen(true);
+  };
+
+  const esVideo = (url) => {
+    return url && (url.includes('video') || url.includes('.mp4') || url.includes('.webm') || url.includes('blob:'));
   };
 
   if (loading) {
@@ -209,46 +242,143 @@ const ArticuloDetalle = () => {
   const esMiArticulo = user?.id === articulo.vendedor_id;
   const yaVendido = articulo.estado_nombre === 'Vendido';
   const envio = articulo.precio_mxn * 0.10;
-  const total = articulo.precio_mxn * 1.10;
+  const comision = articulo.precio_mxn * 0.10;
+  const total = articulo.precio_mxn + envio;
 
   return (
     <div className="d-flex flex-column">
       <Container fluid="xxl" className="my-4 flex-grow-1 px-lg-5">
         <Button 
-            variant="link" 
-            className="text-decoration-none color-2 p-0 mb-3 fw-bold" 
-            onClick={() => navigate(-1)}
+          variant="link" 
+          className="text-decoration-none color-2 p-0 mb-3 fw-bold" 
+          onClick={() => navigate(-1)}
         >
-            <i className="bi bi-arrow-left me-2"></i> Volver
+          <i className="bi bi-arrow-left me-2"></i> Volver
         </Button>
 
         <Row className="g-4">
           <Col lg={7}>
-            <div 
-              className="bg-color-5 rounded-4 mb-3 d-flex align-items-center justify-content-center shadow-sm" 
-              style={{ 
-                minHeight: '550px', 
-                backgroundImage: `url(${portadaActiva})`, 
-                backgroundSize: 'cover',       
-                backgroundPosition: 'center',  
-                backgroundRepeat: 'no-repeat',
-              }}
-            />
+            {/* Imagen principal */}
+            <div className="position-relative">
+              <div 
+                className="bg-color-5 rounded-4 mb-3 d-flex align-items-center justify-content-center shadow-sm" 
+                style={{ 
+                  minHeight: '550px',
+                  maxHeight: '600px',
+                  backgroundColor: '#f5f5f5',
+                  overflow: 'hidden',
+                  cursor: 'pointer'
+                }}
+                onClick={() => portadaActiva && abrirModalImagen(portadaActiva)}
+              >
+                {portadaActiva ? (
+                  esVideo(portadaActiva) ? (
+                    <video
+                      key={portadaActiva}
+                      src={portadaActiva}
+                      controls
+                      autoPlay
+                      playsInline
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain'
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ) : (
+                    <img 
+                      src={portadaActiva} 
+                      alt="Imagen del artículo"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain'
+                      }}
+                    />
+                  )
+                ) : (
+                  <i className="bi bi-image text-muted" style={{ fontSize: '3rem' }}></i>
+                )}
+              </div>
+              
+              {/* Badge de estado */}
+              {yaVendido && (
+                <div className="position-absolute top-0 start-0 m-3">
+                  <span className="badge bg-success px-3 py-2 rounded-pill">
+                    <i className="bi bi-check-circle-fill me-1"></i> VENDIDO
+                  </span>
+                </div>
+              )}
+              
+              {/* Botones de navegación */}
+              {articulo.media?.length > 1 && (
+                <>
+                  <button
+                    className="btn btn-light rounded-circle position-absolute top-50 start-0 translate-middle-y ms-2 shadow d-flex align-items-center justify-content-center"
+                    style={{ width: '40px', height: '40px', zIndex: 10 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      imagenAnterior();
+                    }}
+                  >
+                    <i className="bi bi-chevron-left"></i>
+                  </button>
+                  <button
+                    className="btn btn-light rounded-circle position-absolute top-50 end-0 translate-middle-y me-2 shadow d-flex align-items-center justify-content-center"
+                    style={{ width: '40px', height: '40px', zIndex: 10 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      imagenSiguiente();
+                    }}
+                  >
+                    <i className="bi bi-chevron-right"></i>
+                  </button>
+                  <div className="position-absolute bottom-0 start-50 translate-middle-x mb-3 bg-dark bg-opacity-50 text-white rounded-pill px-3 py-1 small">
+                    {indiceImagenActual + 1} / {articulo.media.length}
+                  </div>
+                </>
+              )}
+            </div>
+            
+            {/* Miniaturas */}
             <Row className="g-2">
               {articulo.media?.map((img, index) => (
                 <Col xs={4} key={index}>
                   <div 
-                    className="bg-color-5 rounded-3 shadow-sm cursor-pointer"
+                    className={`bg-color-5 rounded-3 shadow-sm cursor-pointer overflow-hidden ${
+                      portadaActiva === img ? 'border border-2 border-warning' : 'border border-2 border-transparent'
+                    }`}
                     onClick={() => cambiarImagen(img, index)}
                     style={{ 
                       height: '140px',
-                      backgroundImage: `url(${img})`,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      backgroundRepeat: 'no-repeat',
-                      cursor: 'pointer'
+                      backgroundColor: '#f5f5f5',
+                      position: 'relative'
                     }}
-                  />
+                  >
+                    {esVideo(img) ? (
+                      <div className="d-flex flex-column align-items-center justify-content-center h-100">
+                        <i className="bi bi-play-circle-fill color-2" style={{ fontSize: '2rem' }}></i>
+                        <small className="text-muted mt-1" style={{ fontSize: '0.6rem' }}>Video</small>
+                      </div>
+                    ) : (
+                      <img 
+                        src={img} 
+                        alt={`Miniatura ${index + 1}`}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          cursor: 'pointer'
+                        }}
+                      />
+                    )}
+                    {portadaActiva === img && (
+                      <div className="position-absolute top-0 end-0 m-1" style={{ zIndex: 5 }}>
+                        <i className="bi bi-check-circle-fill text-warning" style={{ fontSize: '1.5rem' }}></i>
+                      </div>
+                    )}
+                  </div>
                 </Col>
               ))}
             </Row>
@@ -257,15 +387,33 @@ const ArticuloDetalle = () => {
           <Col lg={5}>
             <Card className="shadow-sm rounded-5 p-4">
               <div className="d-flex align-items-center mb-4">
-                <div className="d-flex justify-content-center align-items-center shadow-sm me-3" 
-                  style={{ width: "55px", height: "55px", backgroundColor: "#E8B767", borderRadius: "8px" }}>
-                  <i className="bi bi-person color-1 fs-5"></i>
+                {/* Foto de perfil del vendedor */}
+                <div className="d-flex justify-content-center align-items-center shadow-sm me-3 overflow-hidden" 
+                  style={{ 
+                    width: "55px", 
+                    height: "55px", 
+                    backgroundColor: "#f3e1c7", 
+                    borderRadius: "10%",
+                  }}>
+                  {fotoPerfil ? (
+                    <img 
+                      src={fotoPerfil} 
+                      alt={`Foto de ${articulo.vendedor_nombre || 'Vendedor'}`}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
+                    />
+                  ) : (
+                    <i className="bi bi-person color-1 fs-3"></i>
+                  )}
                 </div>
                 <div>
                   <Link
                     to={`/profile/public/${articulo.vendedor_id}`}
                     className="text-decoration-none"
-                    >
+                  >
                     <h5 className="mb-1 color-1 fw-bold">{ esMiArticulo ? "Tú" : articulo.vendedor_nombre }</h5>
                   </Link>
                   <div className="d-inline-flex align-items-center gap-2">
@@ -278,7 +426,7 @@ const ArticuloDetalle = () => {
                 </div>
                 {!esMiArticulo &&
                   <div className='pe-2 ms-auto'>
-                    <i className={`bi ${isFavorite ? 'bi-heart-fill' : 'bi-heart'} color-1 fw-bold"`} 
+                    <i className={`bi ${isFavorite ? 'bi-heart-fill' : 'bi-heart'} color-1 fw-bold`} 
                       style={{ fontSize: '30px', cursor: 'pointer' }}
                       onClick={() => handleFavorito(id)}
                     ></i>
@@ -302,8 +450,36 @@ const ArticuloDetalle = () => {
 
               {!esMiArticulo && !yaVendido && (
                 <>
-                  <div className="mb-4">
-                    <h6 className="fw-bold color-1 mb-3">Método de Pago</h6>
+                  <div className="mb-4 position-relative">
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <h6 className="fw-bold color-1 mb-0">Método de Pago</h6>
+                      <i 
+                        className="bi bi-credit-card fs-4 color-2" 
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => navigate('/perfil/configuracion')}
+                        onMouseEnter={() => setShowModalAgregarTarjeta(true)}
+                        onMouseLeave={() => setShowModalAgregarTarjeta(false)}
+                      ></i>
+                      {showModalAgregarTarjeta && (
+                        <div 
+                          className="position-absolute bg-white rounded-3 shadow-lg p-3"
+                          style={{ 
+                            bottom: '100%', 
+                            right: 0, 
+                            zIndex: 1000,
+                            minWidth: '200px',
+                            marginBottom: '5px'
+                          }}
+                          onMouseEnter={() => setShowModalAgregarTarjeta(true)}
+                          onMouseLeave={() => setShowModalAgregarTarjeta(false)}
+                        >
+                          <Link to="/perfil/configuracion" className="text-decoration-none">
+                            <i className="bi bi-plus-circle me-2 color-1"></i>
+                            <span className="color-1">Agrega uno aquí</span>
+                          </Link>
+                        </div>
+                      )}
+                    </div>
                     {metodosPago.length > 0 ? (
                       metodosPago.map(metodo => (
                         <div 
@@ -331,8 +507,7 @@ const ArticuloDetalle = () => {
                       ))
                     ) : (
                       <div className="alert alert-warning">
-                        No tienes métodos de pago registrados. 
-                        <a href="/perfil/configuracion">Agrega uno aquí</a>
+                        No tienes métodos de pago registrados.
                       </div>
                     )}
                   </div>
@@ -347,8 +522,8 @@ const ArticuloDetalle = () => {
                       <span className="fw-bold">{formatearPrecio(envio)}</span>
                     </div>
                     <div className="d-flex justify-content-between text-danger mb-2">
-                      <span>Comisión (8%):</span>
-                      <span className="fw-bold">-{formatearPrecio(articulo.precio_mxn * 0.08)}</span>
+                      <span>Comisión (10%):</span>
+                      <span className="fw-bold">-{formatearPrecio(comision)}</span>
                     </div>
                     <hr />
                     <div className="d-flex justify-content-between">
@@ -358,9 +533,16 @@ const ArticuloDetalle = () => {
                   </div>
 
                   <Button 
-                    className="btn-2 w-100 py-2 fw-bold"
+                    className="w-100 py-2 fw-bold"
                     onClick={handleConfirmarCompra}
                     disabled={procesando || metodosPago.length === 0}
+                    style={{ 
+                      backgroundColor: '#8d4925', 
+                      borderColor: '#8d4925',
+                      color: 'white',
+                      borderRadius: '30px',
+                      border: 'none'
+                    }}
                   >
                     {procesando ? (
                       <>
@@ -392,7 +574,63 @@ const ArticuloDetalle = () => {
         </Row>
       </Container>
 
-      {/* Modal de éxito - IGUAL que en SubastaDetalle */}
+      {/* Modal de imagen - más pequeño y con fondo blanco */}
+      <Modal
+        show={showModalImagen}
+        onHide={() => setShowModalImagen(false)}
+        centered
+        size="lg"
+        contentClassName="border-0 shadow-lg"
+        style={{ borderRadius: '20px' }}
+      >
+        <div className="position-relative p-4" style={{ backgroundColor: '#ffffff', minHeight: '60vh' }}>
+          <button
+            className="btn btn-light rounded-circle position-absolute top-0 end-0 m-3 shadow d-flex align-items-center justify-content-center"
+            style={{ width: '40px', height: '40px', zIndex: 10 }}
+            onClick={() => setShowModalImagen(false)}
+          >
+            <i className="bi bi-x-lg"></i>
+          </button>
+          
+          <div className="d-flex align-items-center justify-content-center" style={{ minHeight: '50vh' }}>
+            {esVideo(imagenModal) ? (
+              <video
+                key={imagenModal}
+                src={imagenModal}
+                controls
+                autoPlay
+                playsInline
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '50vh',
+                  objectFit: 'contain',
+                  borderRadius: '8px'
+                }}
+              />
+            ) : (
+              <img
+                src={imagenModal}
+                alt="Imagen ampliada"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '50vh',
+                  objectFit: 'contain',
+                  borderRadius: '8px'
+                }}
+              />
+            )}
+          </div>
+          
+          {articulo?.media?.length > 1 && (
+            <div className="position-absolute bottom-0 start-50 translate-middle-x mb-3 bg-dark bg-opacity-50 text-white rounded-pill px-3 py-1 small">
+              <i className="bi bi-images me-2"></i>
+              {indiceImagenActual + 1} / {articulo.media.length}
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* Modal de éxito */}
       <Modal 
         show={showSuccessModal} 
         onHide={handleCerrarModal}

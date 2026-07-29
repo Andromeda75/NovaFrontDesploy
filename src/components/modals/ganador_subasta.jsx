@@ -3,7 +3,8 @@ import React from 'react';
 function Ganadorsubasta({ cerrar }) {
   return (
     <div className="modal d-flex align-items-center justify-content-center shadow" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 1050 }}>
-      <div className="card border-0 shadow-lg" style={{ width: '800px', Width: '500px', borderRadius: '25px', overflow: 'hidden' }}>
+      <div className="card border-0 shadow-lg" style={{ width: '800px', Width: '500px', borderRadius: '25px', overflow: 'hidden', backdropFilter: 'blur(2px)',
+            WebkitBackdropFilter: 'blur(2px)'}}>
         <div className="text-end p-3 pb-0">
           <button type="button" className="btn-close" onClick={cerrar}></button>
         </div>

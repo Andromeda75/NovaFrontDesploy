@@ -53,11 +53,46 @@ export const articuloService = {
         return response.data;
     },
 
-    // Cambiar Estado del Articulo
+    // Cambiar Estado del Articulo (método antiguo - se mantiene por compatibilidad)
     cambiarEstado: async (id, data) => {
         const response = await api.put(`/articulos/${id}/estado`, data);
         return response.data;
     },
+
+    // ========== NUEVOS MÉTODOS PARA EL FLUJO DE APROBACIÓN/RECHAZO ==========
+
+    /**
+     * ADMIN: Aprobar artículo (cambia estado a Publicado - ID 4)
+     * @param {number} id - ID del artículo
+     * @returns {Promise} Respuesta del servidor
+     */
+    aprobarArticulo: async (id) => {
+        const response = await api.put(`/articulos/${id}/aprobar`);
+        return response.data;
+    },
+
+    /**
+     * ADMIN: Rechazar artículo con observaciones (cambia estado a Rechazado - ID 6)
+     * @param {number} id - ID del artículo
+     * @param {string} observaciones - Motivo del rechazo (mínimo 5 caracteres)
+     * @returns {Promise} Respuesta del servidor
+     */
+    rechazarArticulo: async (id, observaciones) => {
+        const response = await api.put(`/articulos/${id}/rechazar`, { observaciones });
+        return response.data;
+    },
+
+    /**
+     * USUARIO: Reenviar artículo rechazado (cambia estado de Rechazado a En revisión - ID 6 → 3)
+     * @param {number} id - ID del artículo
+     * @returns {Promise} Respuesta del servidor
+     */
+    reenviarArticulo: async (id) => {
+        const response = await api.put(`/articulos/${id}/reenviar`);
+        return response.data;
+    },
+
+    // ========== FIN NUEVOS MÉTODOS ==========
 
     // Eliminar artículo
     eliminarArticulo: async (id) => {

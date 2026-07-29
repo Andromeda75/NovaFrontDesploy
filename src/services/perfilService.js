@@ -28,6 +28,12 @@ export const perfilService = {
         return response.data;
     },
 
+    // Obtener la estadisticas de un usuario en especifico
+    getEstadisticasUser: async (id) => {
+    const response = await api.get(`/usuarios/estadisticas/${id}`);
+        return response.data;
+    },
+
     // Obtener estadísticas del usuario (tickets, subastas, artículos, catálogos)
     getEstadisticas: async () => {
         const response = await api.get('/usuarios/estadisticas');
@@ -65,6 +71,11 @@ export const perfilService = {
         return response.data;
     },
 
+    cambiarEstado: async (id, estado, motivo) => {
+        const response = await api.put(`/usuarios/${id}/estado`, { estado, motivo });
+        return response.data;
+    },
+
     // Cambiar email del usuario (requiere contraseña actual)
     // Recibe: { nuevo_email, contrasena_actual }
     cambiarEmail: async (data) => {
@@ -76,6 +87,31 @@ export const perfilService = {
     // Recibe: { contrasena_actual, nueva_contrasena }
     cambiarPassword: async (data) => {
         const response = await api.put('/usuarios/cambiar-password', data);
+        return response.data;
+    },
+
+    // ================================================================
+    // ===== NUEVAS FUNCIONES PARA LA FOTO DE PERFIL =====
+    // ================================================================
+
+    // Actualizar foto de perfil
+    // Recibe: fotoBase64 (string) - "data:image/jpeg;base64,..."
+    actualizarFotoPerfil: async (fotoBase64) => {
+        const response = await api.put('/usuarios/perfil/foto', { 
+            foto_perfil_url: fotoBase64 
+        });
+        return response.data;
+    },
+
+    // Eliminar foto de perfil
+    eliminarFotoPerfil: async () => {
+        const response = await api.delete('/usuarios/perfil/foto');
+        return response.data;
+    },
+
+    // Obtener foto de perfil (opcional, ya viene en getPerfil)
+    obtenerFotoPerfil: async () => {
+        const response = await api.get('/usuarios/perfil/foto');
         return response.data;
     }
 };

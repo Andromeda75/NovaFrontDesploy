@@ -9,7 +9,7 @@ function PeticionModal({ showModal, setShowModal, formData, handleUpdate, handle
 
   return (
     <>
-          <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.6)", zIndex: 1040 }} onClick={() => setShowModal(false)}></div>
+          <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0,0,0,0.6)", zIndex: 1040, backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)' }} onClick={() => setShowModal(false)}></div>
 
           <div className="modal d-block" style={{ zIndex: 1050 }}>
             <div className="modal-dialog modal-lg modal-dialog-centered">
@@ -92,7 +92,6 @@ function PeticionModal({ showModal, setShowModal, formData, handleUpdate, handle
                     <Button className="btn-linear-gradient" onClick={() => setShowModal(false)}>Cancelar</Button>
 
                     <div className="d-flex align-items-center gap-3">
-                        <span className="badge rounded-pill px-3 py-2" style={{ backgroundColor: "#f6d8a8", color: "#8d4925" }}>- 5 Tickets</span>
                         <Button className="btn-linear-gradient" onClick={editando ? handleUpdate : handleSubmit}>{editando ? "Guardar Cambios" : "Publicar Petición"}<i className="bi bi-check-lg ms-2"></i></Button>
                     </div>
                   </div>

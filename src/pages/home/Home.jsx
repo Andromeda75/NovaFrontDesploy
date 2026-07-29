@@ -19,11 +19,13 @@ import MensajeModal from '../../components/modals/MensajeModal.jsx';
 import { useModal } from '../../components/modals/useModal.jsx';
 
 function Home() {
+
     const { id } = useParams();
     const { modal, showModal, hideModal } = useModal();
     
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+
     const [perfil, setPerfil] = useState([]);
     const [subasta, setSubasta] = useState([]);
     const [publicidades, setPublicidades] = useState([]);
@@ -39,6 +41,7 @@ function Home() {
 
     useEffect(() => {
         const carouselElement = document.querySelector('#homeBannerCarousel');
+
         if (carouselElement) {
             new Carousel(carouselElement, {
                 interval: 4000,
@@ -50,32 +53,45 @@ function Home() {
     const cargarDatos = async () => {
         setLoading(true);
         try {
+
             const perfilData = await perfilService.getUsers();
             setPerfil(perfilData);
 
             const subastaData = await subastaService.getSubastas();
+            console.log('📦 Subastas recibidas:', subastaData);
+            
+            // ✅ Verificar esMegaSubasta
+            subastaData.forEach(s => {
+                console.log(`  ${s.titulo}: esMegaSubasta = ${s.esMegaSubasta} (${typeof s.esMegaSubasta})`);
+            });
+            
             setSubasta(subastaData);
 
-            // ✅ Ya no necesitas corregir URLs aquí, el servicio lo hace
             const publicidadesData = await monetizacionService.getPublicidadPublica();
             setPublicidades(publicidadesData);
-            
+          
         } catch (err) {
-            console.error('Error cargando datos:', err);
-            setError('Error al cargar los datos');
+          console.error('Error cargando datos:', err);
+          setError('Error al cargar los datos');
         } finally {
-            setLoading(false);
+          setLoading(false);
         }
     };
+
     const mostrarSubastas = (array, tamaño) => {
-    const grupos = [];
+        const grupos = [];
         for (let i = 0; i < array.length; i += tamaño) {
             grupos.push(array.slice(i, i + tamaño));
         }
         return grupos;
     };
 
-    const subastasFiltradas = subasta.filter(s => s.estado_id === 8);;
+    // ✅ FILTRAR: Mostrar solo MegaSubastas activas
+    const subastasFiltradas = subasta.filter(s => 
+        s.estado_id === 8 && 
+        (s.esMegaSubasta === true || s.esMegaSubasta === 1 || s.esMegaSubasta === "1")
+    );
+    
     const subastasAgrupadas = mostrarSubastas(subastasFiltradas, 3);
 
     const initialSubasta = {
@@ -371,133 +387,197 @@ function Home() {
         }));
     };
 
-if (loading) {
+    if (loading) {
         return (
-            <div className="d-flex justify-content-center align-items-center" style={{ height: '400px' }}>
-                <div className="spinner-border text-primary" role="status">
-                    <span className="visually-hidden">Cargando...</span>
-                </div>
+        <div className="d-flex justify-content-center align-items-center" style={{ height: '400px' }}>
+            <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Cargando...</span>
             </div>
+        </div>
         );
     }
 
     if (error) {
         return (
-            <div className="alert alert-danger m-3">
-                {error}
-            </div>
+        <div className="alert alert-danger m-3">
+            {error}
+        </div>
         );
     }
 
-    return (
-        <>
-            <div className="container py-4 px-5 mw-100 bg-light homeBody">
-                {/* Category - ya debería usar rutas absolutas */}
-                <Category />
+    return(
+    <>
+        <div className="container py-3 px-4 mw-100 bg-light homeBody">
+            <Category></Category>
+            <div 
+                id="homeBannerCarousel" 
+                className="carousel slide mb-4"
+                >
+                <div className="carousel-inner rounded">
+                    
+                    {publicidades.length > 0 ? (
+                        publicidades.map((item, index) => (
+                            <div
+                                key={item.id || index}
+                                className={`carousel-item ${index === 0 ? 'active' : ''}`}
+                            >
+                                <div className="position-relative">
+                                
+                                    <img
+                                        src={item.imagen_url}
+                                        className="d-block w-100"
+                                        alt={`Banner ${index + 1}`}
+                                        style={{
+                                        height: "500px",
+                                        objectFit: "cover"
+                                        }}
+                                    />
 
-                {/* BANNER CAROUSEL */}
-                <div id="homeBannerCarousel" className="carousel slide mb-4">
-                    <div className="carousel-inner rounded">
-                        {publicidades.length > 0 ? (
-                            publicidades.map((item, index) => (
-                                <div
-                                    key={item.id || index}
-                                    className={`carousel-item ${index === 0 ? 'active' : ''}`}
-                                >
-                                    <div className="position-relative">
-                                        <img
-                                            src={item.imagen_url}
-                                            className="d-block w-100"
-                                            alt={`Banner ${index + 1}`}
-                                            style={{ height: "500px", objectFit: "cover" }}
-                                            onError={(e) => {
-                                                e.target.onerror = null;
-                                                e.target.src = '/img/placeholder-banner.jpg';
-                                            }}
-                                        />
-                                        {/* Contenido del banner */}
-                                        <div className="carousel-caption d-flex flex-column justify-content-end align-items-start text-end"
-                                            style={{ top: "20px", right: "auto", left: "20px", bottom: "auto" }}>
-                                            <div className="card card-transparent border-0 p-4">
-                                                <h1 className="color-2 fonts-size-title mb-3">
-                                                    Tres formas de disfrutar nuestra plataforma.
-                                                </h1>
-                                                <div className="d-flex align-items-start gap-3 flex-wrap">
-                                                    <button
-                                                        className="btn btn-2 text-white fw-bold d-inline-flex justify-content-center align-items-center"
-                                                        onClick={handleOpenSubastaModal}
-                                                    >
-                                                        <i className="bi bi-plus-circle fs-5"></i>
-                                                        <span className="d-none d-md-inline ms-2">Crear Subasta</span>
-                                                    </button>
-                                                    <button
-                                                        className="btn btn-2 text-white fw-bold d-inline-flex justify-content-center align-items-center"
-                                                        onClick={handleOpenArticuloModal}
-                                                    >
-                                                        <i className="bi bi-box-arrow-up fs-5"></i>
-                                                        <span className="d-none d-md-inline ms-2">Subir Artículo</span>
-                                                    </button>
-                                                    <Link
-                                                        to="/peticiones"
-                                                        className="btn btn-2 text-white fw-bold d-inline-flex justify-content-center align-items-center"
-                                                    >
-                                                        <i className="bi bi-send fs-5"></i>
-                                                        <span className="d-none d-md-inline ms-2">Peticiones</span>
-                                                    </Link>
-                                                </div>
+                                    <div className="carousel-caption d-flex flex-column justify-content-end align-items-start text-end"
+                                    style={{
+                                        top: "20px",
+                                        right: "auto",
+                                        left: "20px",
+                                        bottom: "auto"
+                                    }}>
+                                        
+                                        <div className="card card-transparent border-0 p-4">
+                                        
+                                            <h1 className="color-2 fw-bold mb-3">
+                                                Tres formas de disfrutar nuestra plataforma.
+                                            </h1>
+
+                                            <div className="d-flex align-items-start gap-3 flex-wrap">
+                                                
+                                                <button
+                                                className="btn btn-2 text-white fw-bold d-inline-flex justify-content-center align-items-center"
+                                                onClick={handleOpenSubastaModal}
+                                                >
+                                                <i className="bi bi-plus-circle fs-5"></i>
+                                                <span className="d-none d-md-inline ms-2">
+                                                    Crear Subasta
+                                                </span>
+                                                </button>
+
+                                                <button
+                                                className="btn btn-2 text-white fw-bold d-inline-flex justify-content-center align-items-center"
+                                                onClick={handleOpenArticuloModal}
+                                                >
+                                                <i className="bi bi-box-arrow-up fs-5"></i>
+                                                <span className="d-none d-md-inline ms-2">
+                                                    Subir Artículo
+                                                </span>
+                                                </button>
+
+                                                <Link
+                                                to="/peticiones"
+                                                className="btn btn-2 text-white fw-bold d-inline-flex justify-content-center align-items-center"
+                                                >
+                                                <i className="bi bi-send fs-5"></i>
+                                                <span className="d-none d-md-inline ms-2">
+                                                    Peticiones
+                                                </span>
+                                                </Link>
+
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            ))
-                        ) : (
-                            <div className="col-12 text-center py-5">
-                                <i className="bi bi-folder-x fs-1 text-muted"></i>
-                                <h5 className="mt-3 text-muted">No hay anuncios activos por el momento.</h5>
                             </div>
-                        )}
-                    </div>
-                </div>
 
-                {/* SUBASTAS */}
-                <div className='mb-4'>
-                    <h1 className="color-2 fw-bold display-3 mb-2">Subastas</h1>
-                    <p className="color-3 fonts-size-subtitle mb-4">
-                        No pierdas la oportunidad de entrar a Eventos Especiales.
-                    </p>
-                    <div id="carouselHome" className="carousel slide">
-                        <div className="carousel-inner">
-                            {/* ... tu código de subastas ... */}
+                        ))
+                    ) : (
+                        <div className="col-12 text-center py-5">
+                            <i className="bi bi-folder-x fs-1 text-muted"></i>
+                            <h5 className="mt-3 text-muted">
+                                No hay anuncios activos por el momento.
+                            </h5>
                         </div>
-                        <button className="carousel-control-prev color-2" type="button" data-bs-target="#carouselHome" data-bs-slide="prev">
-                            <span aria-hidden="true"><i className="bi bi-caret-left-fill fs-1"></i></span>
-                        </button>
-                        <button className="carousel-control-next color-2" type="button" data-bs-target="#carouselHome" data-bs-slide="next">
-                            <span aria-hidden="true"><i className="bi bi-caret-right-fill fs-1"></i></span>
-                        </button>
-                    </div>
+                    )}
                 </div>
+                
+            </div>
+            <div className='mb-4'>
+                <h1 className="color-2 fw-bold mb-2">MegaSubastas</h1>
+                <p className="color-3 fs-5">
+                    Descubre colecciones exclusivas en nuestras MegaSubastas.
+                </p>
+                <div id="carouselHome" className="carousel slide">
+                    <div className="carousel-inner">
+                            {subastasAgrupadas.length > 0 ? (
+                                subastasAgrupadas.map((grupo, index) => (
+                                    <div 
+                                        key={index} 
+                                        className={`carousel-item ${index === 0 ? 'active' : ''}`}
+                                    >
+                                        <div className="container">
+                                            <div className="row gy-3">
+                                                
+                                                {grupo.map((item) => (
+                                                    <div key={item.id} className="col-md-4">
+                                                        <SubastaCard 
+                                                            {...item} 
+                                                            isPage={true}
+                                                            esMegaSubasta={item.esMegaSubasta || false}
+                                                            cantidadArticulos={item.total_articulos || 0}
+                                                            portada={item.portada || item.img1}
+                                                        />
+                                                    </div>
+                                                ))}
 
-                {/* ARTISTAS DESTACADOS */}
-                <div className="card bg-color-4 border-0 shadow-sm text-white mt-5 rounded-4">
-                    <div className="card-body">
-                        <h1 className="fw-bold display-5 mb-1">Artistas Destacados</h1>
-                        <p className="fonts-size-text mb-3">Talentos con mejores calificaciones.</p>
-                        <div className="row g-3">
-                            {perfil.length > 0 ? (
-                                perfil.slice(0, 6).map(item => (
-                                    <ArtistaCard key={item.id} {...item} />
+                                            </div>
+                                        </div>
+                                    </div>
                                 ))
                             ) : (
                                 <div className="col-12 text-center py-5">
                                     <i className="bi bi-folder-x fs-1 text-muted"></i>
-                                    <h5 className="mt-3 text-muted">Por el momento no hay artistas destacados.</h5>
+                                    <h5 className="mt-3 text-muted">
+                                        No hay MegaSubastas activas por el momento.
+                                    </h5>
                                 </div>
                             )}
-                        </div>
                     </div>
+                    <button className="carousel-control-prev color-2" type="button" data-bs-target="#carouselHome" data-bs-slide="prev">
+                        <span aria-hidden="true">
+                            <i className="bi bi-caret-left-fill fs-1"></i>
+                        </span>
+                    </button>
+                    <button className="carousel-control-next color-2" type="button" data-bs-target="#carouselHome" data-bs-slide="next">
+                        <span aria-hidden="true">
+                            <i className="bi bi-caret-right-fill fs-1"></i>
+                        </span>
+                    </button>
                 </div>
             </div>
+            <div className="card bg-color-4 border-0 shadow-sm text-white mt-5 rounded-4">
+                <div className="card-body">
+                    <h1 className="fw-bold mb-2">Artistas Destacados</h1>
+                
+                    <p className="fonts-size-text mb-3 fs-5">
+                    Talentos con mejores calificaciones.
+                    </p>
+                    <div className="row g-3">
+                        {perfil.length > 0 ? (
+
+                            perfil.slice(0, 6).map(item => (
+                                <ArtistaCard key={item.id} {...item} />
+                            ))
+
+                        ) : (
+
+                            <div className="col-12 text-center py-5">
+                                <i className="bi bi-folder-x fs-1 text-muted"></i>
+                                <h5 className="mt-3 text-muted">
+                                    Por el momento no hay artistas destacados.
+                                </h5>
+                            </div>
+
+                        )}
+                    </div>        
+                </div>
+            </div>
+        </div>
 
         <SubastaModal
             show={showSubastaModal} 

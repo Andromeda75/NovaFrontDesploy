@@ -42,7 +42,7 @@ const MensajeModal = ({ show, onHide, title, message, type = 'success' }) => {
   };
 
   return (
-    <Modal show={show} onHide={onHide} centered backdrop="static" keyboard={false}>
+    <Modal show={show} onHide={onHide} centered backdrop="static" keyboard={false} style={{backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)'}}>
       <div className="modal-content border-0 shadow-lg" style={{ overflow: 'hidden' }}>
         {/* Cabecera con gradiente */}
         <div className="p-4 text-center text-white" style={{ background: 'linear-gradient(to right, #2a140a, #8d4925)' }}>

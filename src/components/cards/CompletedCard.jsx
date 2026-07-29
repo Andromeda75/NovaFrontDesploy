@@ -22,6 +22,7 @@ function formatearPrecio(precio) {
 function CompletedCard({
   id,
   creador_id,
+  artista_nombre,
   creador_nombre,
   fecha_publicacion,
   categoria_nombre,
@@ -30,8 +31,13 @@ function CompletedCard({
   descripcion,
   presupuesto_min_mxn,
   presupuesto_max_mxn,
+  precio,
   plazo_entrega_semanas,
   estado_id,
+  estado,
+  filtroFinalizadas,
+  finalizarTrabajo,
+  pagarTrabajo,
 }) {
   const user = authService.getCurrentUser();
   const isMyPeticion = user?.id === creador_id
@@ -50,27 +56,58 @@ function CompletedCard({
                <Col>
                   <h5 className="mb-1 fw-semibold text-success">Petición Finalizada</h5>
                   <h6 className=" mb-1 color-2">{titulo}</h6>
-                  <h6 className="fw-bold color-1">{creador_nombre}</h6>
+                  <h6 className="fw-bold color-1">
+                    {filtroFinalizadas === "Publicadas"
+                      ? "Tú"
+                      : creador_nombre}
+                  </h6>
                </Col>
 
              </Row>
 
             <p className="text-muted" style={{fontSize:"13px"}}>
-              <span className="me-1">
+              {/* <span className="me-1">
                 <i className="bi bi-circle-fill me-2" style={{color: "#FF6F20"}}></i>
                 En Espera
-              </span>
-              · Precio: $1000 · Tiempo: {formatearFecha(fecha_publicacion)}
+              </span> */}
+              <i className="bi bi-circle-fill me-2" style={{color: "#FF6F20"}}></i>
+              Precio: {formatearPrecio(precio)} · Tiempo: {plazo_entrega_semanas} semanas
             </p>
 
-            { isMyPeticion && (
+            {filtroFinalizadas === "Publicadas" &&  estado === "en_espera_pago" && (
               <div className="d-flex justify-content-center">
-                <a className="btn btn-sm bg-color-1 text-white fw-bold mb-auto rounded-3 w-75" href="#" role="button">
-                  <i className="bi bi-arrow-up-right fs-6"></i>
-                  <span className="d-none d-xxl-inline ms-2">
-                      Pagar Ahora
-                  </span>
-                </a>
+                <button
+                  className="btn btn-sm bg-color-1 text-white fw-bold w-75"
+                  onClick={() => pagarTrabajo(id)}
+                >
+                  <i className="bi bi-arrow-up-right fs-6"></i> 
+                  <span className="d-none d-xxl-inline ms-2">Pagar Ahora</span>
+                </button>
+              </div>
+            )}
+            {filtroFinalizadas === "Colaboraciones" && estado === "aceptada" && (
+              <div className="d-flex justify-content-center">
+                <button
+                  className="btn bg-color-1 text-white btn-sm fw-bold w-75"
+                  onClick={() => finalizarTrabajo(id)}
+                >
+                  <i className="bi bi-arrow-up-right fs-6"></i> 
+                  <span className="d-none d-xxl-inline ms-2">Finalizar Trabajo</span>
+                </button>
+              </div>
+            )}
+            {filtroFinalizadas === "Colaboraciones" && estado === "en_espera_pago" && (
+              <div className="text-center mt-2">
+                <span className="fw-bold text-warning">
+                  Esperando pago del cliente
+                </span>
+              </div>
+            )}
+            {(filtroFinalizadas === "Publicadas" || filtroFinalizadas === "Colaboraciones") && estado === "finalizada" && (
+              <div className="text-center mt-2">
+                <span className="fw-bold text-warning">
+                  Pago realizado
+                </span>
               </div>
             )}
         </Card>

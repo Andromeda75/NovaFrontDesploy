@@ -11,16 +11,16 @@ function SubastaCard({
   pujas,
   tiempo,
   img1,
-  // eslint-disable-next-line no-unused-vars
   img2,
-  // eslint-disable-next-line no-unused-vars
   img3,
-  // eslint-disable-next-line no-unused-vars
   video,
   onEditar,
   onEliminar,
   puedeEditar = false,
-  onVerDetalle
+  onVerDetalle,
+  portada,           // 👈 NUEVO: portada de MegaSubasta
+  esMegaSubasta,     // 👈 NUEVO: indica si es MegaSubasta
+  articulosCount     // 👈 NUEVO: cantidad de artículos
 }) {
 
   const getSubEstadoStyles = (subEstado) => {
@@ -67,6 +67,9 @@ function SubastaCard({
     }
   };
 
+  // Determinar qué imagen mostrar: portada > img1
+  const imagenPrincipal = portada || img1;
+
   return (
     <div 
       className="card border-0 shadow-sm rounded-4 overflow-hidden h-100" 
@@ -77,7 +80,7 @@ function SubastaCard({
         className="position-relative bg-secondary bg-opacity-10" 
         style={{ 
           height: '180px', 
-          backgroundImage: `url(${img1})`, // Usamos img1 como imagen principal de la card
+          backgroundImage: `url(${imagenPrincipal})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center'
         }}
@@ -151,6 +154,15 @@ function SubastaCard({
           </div>
         </div>
 
+        {/* 👇 BADGE DE MEGA SUBASTA - esquina inferior izquierda */}
+        {esMegaSubasta && (
+          <div className="position-absolute bottom-0 start-0 m-3">
+            <span className="badge px-2 py-1" style={{ fontSize: '10px' }}>
+              <i className="bi bi-collection me-1"></i> Mega
+            </span>
+          </div>
+        )}
+
         {estadoPrincipal === "ACTIVA" && tiempo && (
           <div className="position-absolute bottom-0 end-0 m-3 px-3 py-2 d-flex align-items-center gap-2" style={{
             background: "rgb(99, 44, 0)", 
@@ -171,7 +183,16 @@ function SubastaCard({
             <i className="bi bi-people me-1"></i>{pujas} pujas
           </small>
         </div>
-        <h5 className="fw-bold mt-2 color-1"style={{fontSize:'18px'}}>{titulo}</h5>
+        
+        <h5 className="fw-bold mt-2 color-1" style={{fontSize:'18px'}}>{titulo}</h5>
+        
+        {/* 👇 MOSTRAR CANTIDAD DE ARTÍCULOS SI ES MEGASUBASTA */}
+        {esMegaSubasta && articulosCount !== undefined && (
+          <small className="text-warning d-block mb-2" style={{ fontSize: '11px' }}>
+            <i className="bi bi-collection me-1"></i> {articulosCount} artículos
+          </small>
+        )}
+        
         <div className="mt-3 border-top pt-2 row g-0">
           <div className="col-6">
             <small className="text-muted d-block" style={{fontSize:'10px'}}>PUJA ACTUAL</small>

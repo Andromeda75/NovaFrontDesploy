@@ -66,7 +66,7 @@ CREATE TABLE `catalogos` (
   `imagenes_extra` longtext DEFAULT NULL,
   `visibilidad` varchar(10) DEFAULT 'publico',
   `propietario_id` int(11) NOT NULL,
-  `fecha_publicacion` date DEFAULT (CURDATE()),
+  `fecha_publicacion` date DEFAULT (CURRENT_DATE),
   PRIMARY KEY (`id`),
   KEY `categoria_id` (`categoria_id`),
   KEY `idx_catalogos_propietario` (`propietario_id`),

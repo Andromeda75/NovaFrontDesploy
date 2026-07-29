@@ -24,6 +24,9 @@ const Configuracion = () => {
     email: ''
   });
 
+  // Estado para la foto de perfil
+  const [fotoPerfil, setFotoPerfil] = useState(null);
+
   const [tarjetas, setTarjetas] = useState([]);
   const [userEmail, setUserEmail] = useState('');
 
@@ -61,6 +64,17 @@ const Configuracion = () => {
       
       setUserEmail(perfil.email || '');
 
+      // Cargar la foto de perfil
+      if (perfil.foto_perfil_url) {
+        setFotoPerfil(perfil.foto_perfil_url);
+        localStorage.setItem('fotoPerfil', perfil.foto_perfil_url);
+      } else {
+        const fotoGuardada = localStorage.getItem('fotoPerfil');
+        if (fotoGuardada) {
+          setFotoPerfil(fotoGuardada);
+        }
+      }
+
       // Cargar métodos de pago
       const metodos = await perfilService.getMetodosPago();
       setTarjetas(metodos.map(m => ({
@@ -78,6 +92,37 @@ const Configuracion = () => {
       setLoading(false);
     }
   };
+
+  // Efecto para escuchar cambios en la foto desde otros componentes
+  useEffect(() => {
+    const handleFotoActualizada = (event) => {
+      if (event.detail?.foto) {
+        setFotoPerfil(event.detail.foto);
+      } else {
+        const fotoGuardada = localStorage.getItem('fotoPerfil');
+        if (fotoGuardada) {
+          setFotoPerfil(fotoGuardada);
+        } else {
+          setFotoPerfil(null);
+        }
+      }
+    };
+
+    window.addEventListener('fotoPerfilActualizada', handleFotoActualizada);
+
+    const handleStorageChange = (e) => {
+      if (e.key === 'fotoPerfil') {
+        setFotoPerfil(e.newValue);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('fotoPerfilActualizada', handleFotoActualizada);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
 
   const mostrarToast = (mensaje, esExito = true) => {
     setToastMessage(mensaje);
@@ -241,7 +286,23 @@ const Configuracion = () => {
           <div className="card border-0 shadow-sm p-4 h-100" style={{ borderRadius: '25px', backgroundColor: '#fff', border: '1px solid #eee' }}>
             <div className="d-flex justify-content-between align-items-center mb-4">
               <h5 className="fw-bold d-flex align-items-center" style={{ color: '#555' }}>
-                <i className="bi bi-person-circle me-3 fs-4"></i> Datos Personales
+                {fotoPerfil ? (
+                  <img 
+                    src={fotoPerfil} 
+                    alt="Foto de perfil"
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '10%',
+                      objectFit: 'cover',
+                      marginRight: '12px',
+                      
+                    }}
+                  />
+                ) : (
+                  <i className="bi bi-person-circle me-3 fs-4"></i>
+                )}
+                Datos Personales
               </h5>
               <button 
                 className={`btn ${modoEdicion ? 'btn-success' : 'btn-outline-secondary'} d-flex align-items-center gap-2 rounded-pill px-4 py-2`}
@@ -281,7 +342,7 @@ const Configuracion = () => {
                   disabled={!modoEdicion}
                   style={{ backgroundColor: modoEdicion ? '#fff' : '#f8f9fa' }}
                 >
-                  <option>Coleccionista de arte</option>
+                  <option>Coleccionista</option>
                   <option>Artista</option>
                   <option>Galería</option>
                   <option>Inversionista</option>
@@ -324,7 +385,7 @@ const Configuracion = () => {
                 />
               </div>
               
-              {/* Redes Sociales - 3 columnas (Instagram, Twitter, Facebook) */}
+              {/* Redes Sociales */}
               <div className="col-md-4 text-start">
                 <label className="fw-bold small text-uppercase mb-1" style={{ color: brand.darkBrown }}>Instagram</label>
                 <div className="input-group">
@@ -429,7 +490,7 @@ const Configuracion = () => {
         </div>
       </div>
 
-      {/* MODAL - (se mantiene igual) */}
+      {/* MODAL */}
       <div className="modal fade" id="modalGeneral" tabIndex="-1" aria-hidden="true">
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '25px', overflow: 'hidden' }}>
@@ -445,7 +506,6 @@ const Configuracion = () => {
             </div>
 
             <div className="modal-body p-4 text-start">
-              {/* Contenido del modal (se mantiene igual) */}
               {modalContenido === 'seguridad_inicio' && (
                 <div className="animate__animated animate__fadeIn">
                   <p className="small text-muted mb-4">Antes de hacer cambios, solo necesitamos una confirmación rápida.</p>
@@ -592,139 +652,6 @@ const Configuracion = () => {
       `}</style>
     </div>
   );
-    // ============== OPERACIONES (TRANSACCIONES) ==============
-
-  // Obtener todas las transacciones (subastas, artículos, peticiones)
-  router.get('/transacciones', authMiddleware, isAdmin, async (req, res) => {
-      const { tipo } = req.query;
-      
-      try {
-          let transacciones = [];
-          
-          // 1. Transacciones de Subastas
-          if (!tipo || tipo === 'Subastas') {
-              const [subastas] = await pool.query(`
-                  SELECT 
-                      CONCAT('SUB-', s.id) as id,
-                      s.titulo,
-                      'SUBASTA' as tipo,
-                      COALESCE(u_comprador.nombre_completo, 'N/A') as comprador,
-                      COALESCE(u_vendedor.nombre_completo, 'N/A') as vendedor,
-                      CONCAT('$', FORMAT(COALESCE(s.puja_actual_mxn, 0), 0)) as monto,
-                      DATE_FORMAT(s.fecha_fin, '%d/%m/%Y') as fecha
-                  FROM subastas s
-                  LEFT JOIN usuarios u_comprador ON s.ganador_id = u_comprador.id
-                  LEFT JOIN usuarios u_vendedor ON s.vendedor_id = u_vendedor.id
-                  WHERE s.ganador_id IS NOT NULL
-                  ORDER BY s.fecha_fin DESC
-                  LIMIT 50
-              `);
-              transacciones.push(...subastas);
-          }
-          
-          // 2. Transacciones de Artículos
-          if (!tipo || tipo === 'Articulos') {
-              const [articulos] = await pool.query(`
-                  SELECT 
-                      CONCAT('ART-', a.id) as id,
-                      a.titulo,
-                      'ARTICULO' as tipo,
-                      COALESCE(u_comprador.nombre_completo, 'N/A') as comprador,
-                      COALESCE(u_vendedor.nombre_completo, 'N/A') as vendedor,
-                      CONCAT('$', FORMAT(COALESCE(a.precio_mxn, 0), 0)) as monto,
-                      DATE_FORMAT(a.fecha_publicacion, '%d/%m/%Y') as fecha
-                  FROM articulos a
-                  LEFT JOIN usuarios u_comprador ON a.comprador_id = u_comprador.id
-                  LEFT JOIN usuarios u_vendedor ON a.vendedor_id = u_vendedor.id
-                  WHERE a.comprador_id IS NOT NULL
-                  ORDER BY a.fecha_publicacion DESC
-                  LIMIT 50
-              `);
-              transacciones.push(...articulos);
-          }
-          
-          // 3. Transacciones de Peticiones (Encargos)
-          if (!tipo || tipo === 'Encargos') {
-              const [peticiones] = await pool.query(`
-                  SELECT 
-                      CONCAT('PET-', p.id) as id,
-                      p.titulo,
-                      'ENCARGO' as tipo,
-                      COALESCE(u_comprador.nombre_completo, 'N/A') as comprador,
-                      COALESCE(u_vendedor.nombre_completo, 'N/A') as vendedor,
-                      CONCAT('$', FORMAT(COALESCE(p.presupuesto_max_mxn, 0), 0)) as monto,
-                      DATE_FORMAT(p.fecha_publicacion, '%d/%m/%Y') as fecha
-                  FROM peticiones p
-                  LEFT JOIN usuarios u_comprador ON p.creador_id = u_comprador.id
-                  LEFT JOIN usuarios u_vendedor ON p.artista_asignado_id = u_vendedor.id
-                  WHERE p.artista_asignado_id IS NOT NULL
-                  ORDER BY p.fecha_publicacion DESC
-                  LIMIT 50
-              `);
-              transacciones.push(...peticiones);
-          }
-          
-          res.json(transacciones);
-      } catch (error) {
-          console.error('Error obteniendo transacciones:', error);
-          res.status(500).json({ message: 'Error en el servidor' });
-      }
-  });
-
-  // Obtener transacciones por tipo específico
-  router.get('/transacciones/:tipo', authMiddleware, isAdmin, async (req, res) => {
-      const { tipo } = req.params;
-      const tiposPermitidos = ['Subastas', 'Articulos', 'Encargos'];
-      
-      if (!tiposPermitidos.includes(tipo)) {
-          return res.status(400).json({ message: 'Tipo no válido' });
-      }
-      
-      res.redirect(`/admin/transacciones?tipo=${tipo}`);
-  });
-
-  // Obtener depósitos y garantías
-  router.get('/depositos-garantias', authMiddleware, isAdmin, async (req, res) => {
-      try {
-          // Obtener depósitos de tickets
-          const [depositosTickets] = await pool.query(`
-              SELECT 
-                  tt.id,
-                  u.nombre_completo as usuario,
-                  tt.tickets as cantidad,
-                  DATE_FORMAT(tt.fecha, '%d/%m/%Y') as fecha,
-                  'Depósito Tickets' as tipo
-              FROM transacciones_tickets tt
-              JOIN usuarios u ON tt.usuario_id = u.id
-              WHERE tt.tipo = 'compra'
-              ORDER BY tt.fecha DESC
-              LIMIT 20
-          `);
-          
-          // Obtener garantías (transacciones financieras)
-          const [garantias] = await pool.query(`
-              SELECT 
-                  tf.id,
-                  u.nombre_completo as usuario,
-                  CONCAT('$', FORMAT(COALESCE(tf.monto_mxn, 0), 0)) as monto,
-                  tf.tipo,
-                  tf.estado,
-                  DATE_FORMAT(tf.fecha, '%d/%m/%Y') as fecha
-              FROM transacciones_financieras tf
-              JOIN usuarios u ON tf.usuario_id = u.id
-              ORDER BY tf.fecha DESC
-              LIMIT 20
-          `);
-          
-          res.json({
-              depositos: depositosTickets,
-              garantias: garantias
-          });
-      } catch (error) {
-          console.error('Error obteniendo depósitos y garantías:', error);
-          res.status(500).json({ message: 'Error en el servidor' });
-      }
-  });
 };
 
 export default Configuracion;

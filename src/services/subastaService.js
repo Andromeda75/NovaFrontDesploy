@@ -33,7 +33,7 @@ export const subastaService = {
         return response.data;
     },
 
-    // Cambiar Estado de la Subasta
+    // Cambiar Estado de la Subasta (método antiguo - compatibilidad)
     cambiarEstado: async (id, data) => {
         const response = await api.put(`/subastas/${id}/estado`, data);
         return response.data;
@@ -44,7 +44,33 @@ export const subastaService = {
         return response.data;
     },
 
-    // ========== NUEVOS MÉTODOS AGREGADOS ==========
+    // ========== NUEVOS MÉTODOS PARA APROBACIÓN/RECHAZO ==========
+
+    // ADMIN: Aprobar subasta (estado 8 - Activa)
+    aprobarSubasta: async (id) => {
+        const response = await api.put(`/subastas/${id}/aprobar`);
+        return response.data;
+    },
+
+    // ADMIN: Rechazar subasta con observaciones (estado 10 - Rechazada)
+    rechazarSubasta: async (id, observaciones) => {
+        const response = await api.put(`/subastas/${id}/rechazar`, { observaciones });
+        return response.data;
+    },
+
+    // USUARIO: Reenviar subasta rechazada (estado 10 → 7)
+    reenviarSubasta: async (id) => {
+        const response = await api.put(`/subastas/${id}/reenviar`);
+        return response.data;
+    },
+
+    // ========== ADMIN: OBTENER SUBASTAS PENDIENTES ==========
+    getSubastasPendientesAdmin: async () => {
+        const response = await api.get('/admin/subastas-pendientes');
+        return response.data;
+    },
+
+    // ========== FIN NUEVOS MÉTODOS ==========
 
     // Obtener información del ganador
     getGanador: async (id) => {
@@ -64,7 +90,7 @@ export const subastaService = {
         return response.data;
     },
 
-        // Obtener subastas por categoría
+    // Obtener subastas por categoría
     getSubastasByCategoria: async (categoriaId) => {
         const response = await api.get(`/subastas/categoria/${categoriaId}`);
         return response.data;
@@ -76,5 +102,11 @@ export const subastaService = {
         return response.data;
     },
 
-    
+    // ========== NUEVO: Verificar y finalizar subastas vencidas (ADMIN) ==========
+    verificarSubastasVencidas: async () => {
+        const response = await api.post('/subastas/verificar-vencidas');
+        return response.data;
+    },
 };
+
+export default subastaService;

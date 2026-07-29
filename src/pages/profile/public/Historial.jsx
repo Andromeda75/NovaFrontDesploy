@@ -12,7 +12,7 @@ function Historial() {
     <div className="container-fluid p-0">
       <div className="mb-2">
         <h1 className="fw-bold display-5 color-1 mb-0" style={{ fontSize: '28px' }}>Historial</h1>
-        <p className="text-muted mb-0 color-2" style={{ fontSize: '18px' }}>Registro completo de tus transacciones y uso de tickets.</p>
+        <p className="text-muted mb-0 color-2" style={{ fontSize: '18px' }}>Registro completo de tus transacciones.</p>
       </div>
 
       <div className="mb-0">
@@ -28,11 +28,12 @@ function Historial() {
               className={`btn rounded-pill px-4 fw-bold small color-2 ${filtro === 'Ventas' ? 'bg-white shadow-sm fw-bold color-2' : 'opacity-75'}`}>
               Ventas
             </button>
-            <button 
+            {/* No borrar Tickets lo movere a otro vista */}
+            {/* <button 
               onClick={() => setFiltro('Tickets')}
               className={`btn rounded-pill px-4 fw-bold small color-2 ${filtro === 'Tickets' ? 'bg-white shadow-sm fw-bold color-2' : 'opacity-75'}`}>
               Tickets
-            </button>
+            </button> */}
           </div>
         </div>
         
@@ -42,11 +43,12 @@ function Historial() {
               <HistoryPanel filtro={filtro} />
             </div>
           )}
-          {filtro === 'Tickets' && (
+          {/* No borrar Tickets lo movere a otro vista */}
+          {/* {filtro === 'Tickets' && (
             <div className="col-12 d-flex animate__animated animate__fadeIn">
               <TicketsPanel />
             </div>
-          )}
+          )} */}
         </div>
       </div>
     </div>

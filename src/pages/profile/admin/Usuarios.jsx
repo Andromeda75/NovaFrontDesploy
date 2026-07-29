@@ -1,87 +1,134 @@
-  import React from 'react';
+import { useState, useEffect } from "react";
+import { Link, useParams } from "react-router-dom";
+
 import { Container, Row, Col, Button, Form, InputGroup } from 'react-bootstrap';
-import { useState } from "react";
+
 import UserCard from '../../../components/cards/UserCard.jsx';
 
-function Usuarios() {
-  const [users, setUsers] = useState([
-    {
-      id: 1,
-      nombre: "Alex Rivera",
-      rol: "Coleccionista de Arte",
-      ubicacion: "Mérida, Yucatán",
-      telefono: 9994399905,
-      email: "alex@gmail.com",
-      direccion: "Calle Principal 123",
-      tickets: 10,
-      estado: 1
-    },
-    {
-      id: 2,
-      nombre: "Lorena Peralta",
-      rol: "Artesana",
-      ubicacion: "Mérida, Yucatán",
-      telefono: 9994396670,
-      email: "lorena@gmail.com",
-      direccion: "Calle Principal 123",
-      tickets: 15,
-      estado: 1
-    },
-    {
-      id: 3,
-      nombre: "Mauricio Suárez",
-      rol: "Escultor",
-      ubicacion: "Mérida, Yucatán",
-      telefono: 9970806670,
-      email: "mauricio@gmail.com",
-      direccion: "Calle Principal 123",
-      tickets: 20,
-      estado: 1
-    },
-    {
-      id: 4,
-      nombre: "Estefania Rodriguez",
-      rol: "Pintora",
-      ubicacion: "Mérida, Yucatán",
-      telefono: 9970806670,
-      email: "estafania@gmail.com",
-      direccion: "Calle Principal 123",
-      tickets: 37,
-      estado: 0
-    },
-    {
-      id: 5,
-      nombre: "Andrea Ruizz",
-      rol: "Creadora Digital",
-      ubicacion: "Mérida, Yucatán",
-      telefono: 9970806670,
-      email: "andrea@gmail.com",
-      direccion: "Calle Principal 123",
-      tickets: 40,
-      estado: 0
-    },
-    {
-      id: 6,
-      nombre: "Alejandra Rodriguez",
-      rol: "Artesana",
-      ubicacion: "Mérida, Yucatán",
-      telefono: 9970806670,
-      email: "alejandra@gmail.com",
-      direccion: "Calle Principal 123",
-      tickets: 0,
-      estado: 0
-    }
-  ]);
+import { perfilService } from '../../../services/perfilService.js';
 
+function Usuarios() {
+
+  const { id } = useParams();
   const [filtro, setFiltro] = useState('Activos');
 
-  const cambiarEstadoUsuario = (id, nuevoEstado) => {
-    setUsers(
-      users.map(user =>
-        user.id === id ? { ...user, estado: nuevoEstado } : user
-      )
-    );
+  useEffect(() => {
+    cargarDatos();
+  }, [id]);
+
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [filtro]);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const [users, setUsers] = useState([]);
+
+  const [paginaActual, setPaginaActual] = useState(1);
+  const usuariosPorPagina = 8;
+
+  const cargarDatos = async () => {
+    setLoading(true);
+    try {
+      const userData = await perfilService.getUsers();
+      setUsers(userData);
+      
+    } catch (err) {
+      console.error('Error cargando datos:', err);
+      setError('Error al cargar los datos');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const totalUsers = users.length;
+
+  const totalUsersActivos = users.filter(
+      user => user.estado_id === 1
+  ).length;
+
+  const totalUsersSuspendidos = users.filter(
+      user => user.estado_id === 2
+  ).length;
+
+  const usersActivos = users.filter(
+    item => item.estado_id === 1
+  );
+
+  const usersSuspendidos = users.filter(
+    item => item.estado_id === 2
+  );
+
+  const usuariosFiltrados =
+    filtro === "Activos"
+      ? usersActivos
+      : usersSuspendidos;
+
+  const indiceUltimo = paginaActual * usuariosPorPagina;
+  const indicePrimero = indiceUltimo - usuariosPorPagina;
+
+  const usuariosActuales = usuariosFiltrados.slice(
+    indicePrimero,
+    indiceUltimo
+  );
+
+  const totalPaginas = Math.ceil(
+    usuariosFiltrados.length / usuariosPorPagina
+  );
+
+  const paginasVisibles = [];
+
+  const maxBotones = 4; // Cantidad de botones visibles
+
+  let inicio = Math.max(1, paginaActual - 2);
+  let fin = Math.min(totalPaginas, inicio + maxBotones - 1);
+
+  // Si estamos cerca del final
+  if (fin - inicio < maxBotones - 1) {
+    inicio = Math.max(1, fin - maxBotones + 1);
+  }
+
+  for (let i = inicio; i <= fin; i++) {
+    paginasVisibles.push(i);
+  }
+
+  const cambiarEstado = async (id, nuevoEstado, motivo = "") => {
+    try {
+      await perfilService.cambiarEstado(id, nuevoEstado, motivo);
+  
+      setUsers(prev =>
+        prev.map(p =>
+          p.id === id ? { ...p, estado: nuevoEstado } : p
+        )
+      );
+  
+      await cargarDatos();
+  
+    } catch (error) {
+      console.error('Error al cambiar estado:', error);
+      showModalMessage('Error', 'No se pudo actualizar el estado', 'error');
+    }
+  };
+
+
+  if (loading) {
+    return (
+    <div className="d-flex justify-content-center align-items-center" style={{ height: '400px' }}>
+        <div className="spinner-border text-primary" role="status">
+        <span className="visually-hidden">Cargando...</span>
+        </div>
+    </div>
+    );
+  }
+
+  if (error) {
+    return (
+    <div className="alert alert-danger m-3">
+        {error}
+    </div>
+    );
+  }
 
   return (
     <>
@@ -95,9 +142,9 @@ function Usuarios() {
 
       <div className="row g-3 mb-4">
         {[
-          { label: 'Usuarios Totales', val: '4,569', color: '#853104', icon: 'bi-people' },
-          { label: 'Usuarios Activos', val: '3,285', color: '#853104', icon: 'bi-person-check' },
-          { label: 'Usuarios Suspendidos', val: '1,284', color: '#853104', icon: 'bi-person-slash' },
+          { label: 'Usuarios Totales', val: totalUsers, color: '#853104', icon: 'bi-people' },
+          { label: 'Usuarios Activos', val: totalUsersActivos, color: '#853104', icon: 'bi-person-check' },
+          { label: 'Usuarios Suspendidos', val: totalUsersSuspendidos, color: '#853104', icon: 'bi-person-slash' },
         ].map((item, i) => (
           <div key={i} className="col-4 col-md-4 mov-card">
             <div className={`p-3 rounded-4 shadow-sm text-white h-100 ${item.border ? 'border border-primary border-2' : ''}`} 
@@ -131,40 +178,164 @@ function Usuarios() {
             <div className="p-1 rounded-pill d-flex gap-2 shadow-sm" style={{ backgroundColor: '#f6d8a8', width: 'fit-content' }}>
                   <button 
                     onClick={() => setFiltro('Activos')}
-                    className={`btn rounded-pill px-4 fw-bold small color-2 ${filtro === 'Activos' ? 'bg-white shadow-sm fw-bold color-2' : 'text-muted color-2'}`}>
+                    className={`btn rounded-pill px-4 fw-bold small color-2 ${filtro === 'Activos' ? 'bg-white shadow-sm' : 'opacity-75'}`}>
                     Lista de Usuarios
                   </button>
                   <button 
                     onClick={() => setFiltro('Suspendidos')}
-                    className={`btn rounded-pill px-4 fw-bold small color-2 ${filtro === 'Suspendidos' ? 'bg-white shadow-sm fw-bold color-2' : 'text-muted color-2'}`}>
+                    className={`btn rounded-pill px-4 fw-bold small color-2 ${filtro === 'Suspendidos' ? 'bg-white shadow-sm' : 'opacity-75'}`}>
                     Usuarios Suspendidos
                   </button>
             </div>
         </div>
 
-        <div className="row g-4">
-          {(filtro === 'Activos') && users
-            .filter(user => user.estado === 1)
-            .map((user) => (
-              <div key={user.id} className="col-12 col-md-6 col-lg-6 d-flex animate__animated animate__fadeIn">
-                <UserCard 
-                  user={user}
-                  filtro={filtro}
-                  cambiarEstadoUsuario={cambiarEstadoUsuario}/>
-              </div>
-          ))}
-          {(filtro === 'Suspendidos') && users
-            .filter(user => user.estado === 0)
-            .map((user) => (
-              <div key={user.id} className="col-12 col-md-6 col-lg-6 d-flex animate__animated animate__fadeIn">
-                <UserCard 
-                  user={user}
-                  filtro={filtro}
-                  cambiarEstadoUsuario={cambiarEstadoUsuario}/>
-              </div>
-          ))}
-        </div>
+       <div className="row g-4">
+        {usuariosActuales.length > 0 ? (
+
+          usuariosActuales.map(item => (
+            <div
+              key={item.id}
+              className="col-12 col-lg-6"
+            >
+              <UserCard
+                {...item}
+                filtro={filtro}
+                cambiarEstado={cambiarEstado}
+              />
+            </div>
+          ))
+
+        ) : (
+
+          <div className="col-12 text-center py-5">
+            <i className="bi bi-folder-x fs-1 text-muted"></i>
+            <h5 className="mt-3 text-muted">
+              No hay usuarios.
+            </h5>
+          </div>
+
+        )}
       </div>
+
+      </div>
+      {totalPaginas > 1 && (
+        <div className="d-flex justify-content-center mt-5">
+          <nav>
+            <ul className="pagination">
+              <li className={`page-item ${paginaActual === 1 ? 'disabled' : ''}`}>
+                <button
+                  className="page-link"
+                  onClick={() => setPaginaActual(1)}
+                  style={{ color: '#8d4925' }}
+                >
+                  <i className="bi bi-chevron-double-left"></i>
+                </button>
+              </li>
+
+              <li className={`page-item ${paginaActual === 1 ? 'disabled' : ''}`}>
+                <button className="page-link" onClick={() => setPaginaActual(Math.max(1, paginaActual - 1))} style={{ color: '#8d4925' }}>
+                  <i className="bi bi-chevron-left"></i>
+                </button>
+              </li>
+
+              {inicio > 1 && (
+                <>
+                  <li className="page-item">
+                    <button
+                      className="page-link"
+                      onClick={() => setPaginaActual(1)}
+                      style={
+                          paginaActual === 1
+                            ? {
+                                backgroundColor: "#8d4925",
+                                borderColor: "#8d4925",
+                                color: "white"
+                              }
+                            : { color: "#8d4925" }
+                        }
+                      >
+                      1
+                    </button>
+                  </li>
+
+                  {inicio > 2 && (
+                    <li className="page-item disabled">
+                      <span className="page-link">...</span>
+                    </li>
+                  )}
+                </>
+              )}
+
+              {paginasVisibles.map((pagina) => (
+                <li
+                  key={pagina}
+                  className={`page-item ${paginaActual === pagina ? 'active' : ''}`}
+                >
+                  <button
+                    className="page-link"
+                    onClick={() => setPaginaActual(pagina)}
+                    style={
+                      paginaActual === pagina
+                        ? {
+                            backgroundColor: '#8d4925',
+                            borderColor: '#8d4925',
+                            color: 'white'
+                          }
+                        : { color: '#8d4925' }
+                    }
+                  >
+                    {pagina}
+                  </button>
+                </li>
+              ))}
+
+              {fin < totalPaginas && (
+                <>
+                  {fin < totalPaginas - 1 && (
+                    <li className="page-item disabled">
+                      <span className="page-link">...</span>
+                    </li>
+                  )}
+
+                  <li className="page-item">
+                    <button
+                      className="page-link"
+                      onClick={() => setPaginaActual(totalPaginas)}
+                      style={
+                        paginaActual === 1
+                            ? {
+                                backgroundColor: "#8d4925",
+                                borderColor: "#8d4925",
+                                color: "white"
+                              }
+                            : { color: "#8d4925" }
+                        }
+                      >
+                      {totalPaginas}
+                    </button>
+                  </li>
+                </>
+              )}
+
+              <li className={`page-item ${paginaActual === totalPaginas ? 'disabled' : ''}`}>
+                <button className="page-link" onClick={() => setPaginaActual(Math.min(totalPaginas, paginaActual + 1))} style={{ color: '#8d4925' }}>
+                  <i className="bi bi-chevron-right"></i>
+                </button>
+              </li>
+
+              <li className={`page-item ${paginaActual === totalPaginas ? 'disabled' : ''}`}>
+                <button
+                  className="page-link"
+                  onClick={() => setPaginaActual(totalPaginas)}
+                  style={{ color: '#8d4925' }}
+                >
+                  <i className="bi bi-chevron-double-right"></i>
+                </button>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      )}
 
 
     </div>

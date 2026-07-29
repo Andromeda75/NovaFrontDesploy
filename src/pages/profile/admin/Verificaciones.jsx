@@ -1,5 +1,3 @@
-
-// Verificaciones.jsx (Vista Principal con Paginación)
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from "react-router-dom";
 import VerificacionCard from "../../../components/cards/VerificacionCard.jsx";
@@ -25,6 +23,14 @@ function Verificaciones( {pendientes, setPendientes} ) {
   const [articulo, setArticulo] = useState([]);
   const [subasta, setSubasta] = useState([]);
 
+  // Estado para el mensaje flotante (toast)
+  const [toast, setToast] = useState({
+    show: false,
+    message: '',
+    type: '', // 'success' o 'danger'
+    itemName: ''
+  });
+
   const cargarDatos = async () => {
     setLoading(true);
     try {
@@ -32,7 +38,8 @@ function Verificaciones( {pendientes, setPendientes} ) {
       const articuloData = await articuloService.getArticulosAll();
       setArticulo(articuloData);
 
-      const subastaData = await subastaService.getSubastas();
+      // ✅ CORREGIDO: Usa el método que trae subastas pendientes (estado 7)
+      const subastaData = await subastaService.getSubastasPendientesAdmin();
       setSubasta(subastaData);
 
     } catch (err) {
@@ -53,21 +60,18 @@ function Verificaciones( {pendientes, setPendientes} ) {
 
   // Estados para paginación
   const [paginaActual, setPaginaActual] = useState(1);
-  const [articulosPorPagina] = useState(6); // 6 artículos por página (2 filas de 3 columnas)
+  const [articulosPorPagina] = useState(6);
 
-  // Calcular paginación
   const indiceUltimo = paginaActual * articulosPorPagina;
   const indicePrimero = indiceUltimo - articulosPorPagina;
   const datosActuales = filtro === 'Articulos' ? articuloEnEspera : subastasEnEspera;
   const articulosActuales = datosActuales.slice(indicePrimero, indiceUltimo);
   const totalPaginas = Math.ceil(datosActuales.length / articulosPorPagina);
 
-  // Resetear a página 1 cuando cambia la lista de artículos
   useEffect(() => {
     if (datosActuales.length === 0) {
       setPaginaActual(1);
     } else {
-      // Si la página actual ya no tiene artículos, ir a la última página disponible
       const maxPagina = Math.ceil(datosActuales.length / articulosPorPagina);
       if (paginaActual > maxPagina) {
         setPaginaActual(maxPagina);
@@ -75,21 +79,29 @@ function Verificaciones( {pendientes, setPendientes} ) {
     }
   }, [datosActuales.length, paginaActual, articulosPorPagina]);
 
-  // Función para cambiar de página
   const cambiarPagina = (pagina) => {
     setPaginaActual(pagina);
-    // Scroll suave hacia arriba
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const cambiarEstado = async (id, nuevoEstado) => {
+  // ========== FUNCIÓN PARA CAMBIAR ESTADO (ACTUALIZADA) ==========
+  const cambiarEstado = async (id, nuevoEstado, observaciones = '') => {
     try {
+      const item = filtro === 'Articulos' 
+        ? articulo.find(art => art.id === id)
+        : subasta.find(sub => sub.id === id);
+      
+      const itemName = item?.titulo || item?.nombre || 'Elemento';
 
       if (filtro === 'Articulos') {
-
-        await articuloService.cambiarEstado(id, {
-          estado_id: nuevoEstado
-        });
+        // ========== ARTÍCULOS ==========
+        if (nuevoEstado === 4) { // Aprobar (Publicado)
+          await articuloService.aprobarArticulo(id);
+        } else if (nuevoEstado === 6) { // Rechazar (Rechazado)
+          await articuloService.rechazarArticulo(id, observaciones);
+        } else {
+          await articuloService.cambiarEstado(id, { estado_id: nuevoEstado });
+        }
 
         setArticulo(prev =>
           prev.map(art =>
@@ -100,10 +112,14 @@ function Verificaciones( {pendientes, setPendientes} ) {
         );
 
       } else {
-
-        await subastaService.cambiarEstado(id, {
-          estado_id: nuevoEstado
-        });
+        // ========== SUBASTAS ==========
+        if (nuevoEstado === 8) { // Aprobar (Activa)
+          await subastaService.aprobarSubasta(id);
+        } else if (nuevoEstado === 10) { // Rechazar (Rechazada)
+          await subastaService.rechazarSubasta(id, observaciones);
+        } else {
+          await subastaService.cambiarEstado(id, { estado_id: nuevoEstado });
+        }
 
         setSubasta(prev =>
           prev.map(sub =>
@@ -112,17 +128,42 @@ function Verificaciones( {pendientes, setPendientes} ) {
               : sub
           )
         );
-
       }
 
-       // RESTAR 1 AL CONTADOR
       setPendientes(prev => Math.max(prev - 1, 0));
 
+      const esAprobacion = nuevoEstado === 4 || nuevoEstado === 8;
+      
+      setToast({
+        show: true,
+        message: `La solicitud "${itemName}" fue ${esAprobacion ? 'aprobada' : 'rechazada'} con éxito`,
+        type: esAprobacion ? 'success' : 'danger',
+        itemName: itemName
+      });
+
+      setTimeout(() => {
+        setToast(prev => ({ ...prev, show: false }));
+      }, 10000);
+
     } catch (error) {
-      console.error(error);
+      console.error('Error en cambiarEstado:', error);
+      
+      setToast({
+        show: true,
+        message: error.response?.data?.message || 'Error al procesar la solicitud',
+        type: 'danger',
+        itemName: ''
+      });
+
+      setTimeout(() => {
+        setToast(prev => ({ ...prev, show: false }));
+      }, 10000);
     }
   };
 
+  const cerrarToast = () => {
+    setToast(prev => ({ ...prev, show: false }));
+  };
 
   if (loading) {
     return (
@@ -144,6 +185,33 @@ function Verificaciones( {pendientes, setPendientes} ) {
 
   return (
     <div className="d-flex justify-content-between align-items-start">
+      {/* TOAST FLOTANTE */}
+      {toast.show && (
+        <div 
+          className={`toast show position-fixed top-0 start-50 translate-middle-x mt-3`}
+          style={{ 
+            zIndex: 9999, 
+            minWidth: '350px',
+            maxWidth: '90%',
+            animation: 'slideDown 0.5s ease-out'
+          }}
+        >
+          <div className={`toast-header ${toast.type === 'success' ? 'bg-success' : 'bg-danger'} text-white`}>
+            <i className={`bi ${toast.type === 'success' ? 'bi-check-circle-fill' : 'bi-x-circle-fill'} me-2`}></i>
+            <strong className="me-auto">{toast.type === 'success' ? '¡Éxito!' : 'Error'}</strong>
+            <small>Hace un momento</small>
+            <button 
+              type="button" 
+              className="btn-close btn-close-white" 
+              onClick={cerrarToast}
+            ></button>
+          </div>
+          <div className="toast-body">
+            {toast.message}
+          </div>
+        </div>
+      )}
+
       <div style={{ width: '100%' }}>
         <div className="d-flex justify-content-between align-items-center mb-3">
           <div>
@@ -196,7 +264,6 @@ function Verificaciones( {pendientes, setPendientes} ) {
 
                 ) : (
 
-                    // mensaje cuando no hay datos
                     <div className="col-12 text-center py-5">
                         <i className="bi bi-check-circle-fill text-success fs-1"></i>
                         <h5 className="mt-3 text-muted">
@@ -223,7 +290,6 @@ function Verificaciones( {pendientes, setPendientes} ) {
 
                 ) : (
 
-                    // mensaje cuando no hay datos
                     <div className="col-12 text-center py-5">
                         <i className="bi bi-check-circle-fill text-success fs-1"></i>
                         <h5 className="mt-3 text-muted">
@@ -237,7 +303,6 @@ function Verificaciones( {pendientes, setPendientes} ) {
           )}
         </div>
 
-        {/* PAGINACIÓN */}
         {totalPaginas > 1 && (
           <div className="d-flex justify-content-center mt-5">
             <nav>
@@ -282,13 +347,25 @@ function Verificaciones( {pendientes, setPendientes} ) {
           </div>
         )}
 
-        {/* Mostrando información de resultados */}
         {articulosActuales.length > 0 && (
           <div className="text-center text-muted small mt-3">
             Mostrando {indicePrimero + 1} - {Math.min(indiceUltimo, datosActuales.length)} de {datosActuales.length} artículos
           </div>
         )}
       </div>
+
+      <style jsx>{`
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 }

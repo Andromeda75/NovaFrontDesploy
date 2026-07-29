@@ -5,6 +5,15 @@ import DT from "datatables.net-dt";
 import { transaccionesService } from '../../services/transaccionesService';
 DataTable.use(DT);
 
+function formatearPrecio(precio) {
+  if (precio == null) return '';
+
+  return new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: 'MXN'
+  }).format(precio);
+}
+
 export default function HistoryPanel({ filtro }) {
   const [tableData, setTableData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,6 +34,8 @@ export default function HistoryPanel({ filtro }) {
         rawData = await transaccionesService.getVentas();
       }
 
+      // console.log(rawData);
+
       if (!Array.isArray(rawData)) {
         console.error('La respuesta no es un array:', rawData);
         setTableData([]);
@@ -32,19 +43,27 @@ export default function HistoryPanel({ filtro }) {
       }
 
       // Transformar a array de arrays con EXACTAMENTE 7 columnas
-      const formattedData = rawData.map(item => [
-        `#${item.id || ''}`,                              // Columna 0: TRANSACCIÓN
-        item.titulo || 'Sin título',                       // Columna 1: TÍTULO
-        item.tipo || 'Otro',                               // Columna 2: TIPO
-        item.fecha || 'Fecha no disponible',               // Columna 3: FECHA
-        filtro === "Compras" 
-          ? (item.metodoPago || 'No registrado')
-          : (item.comprador || 'Anónimo'),                  // Columna 4: MÉTODO PAGO / COMPRADOR
-        item.estado || 'Desconocido',                      // Columna 5: ESTADO
-        item.precio ? `$${item.precio}` : '$0'             // Columna 6: COSTO
-      ]);
+      const formattedData = rawData.map(item => {
+        const fila = [
+          `#${item.id || ''}`,
+          item.titulo || 'Sin título',
+        ];
+
+        if (filtro === "Ventas") {
+          fila.push(item.comprador || "Anónimo");
+        }
+
+        fila.push(
+          item.fecha || "Fecha no disponible",
+          item.precio ? `${formatearPrecio(item.precio)}` : "$0",
+          item.estado || "Desconocido"
+        );
+
+        return fila;
+      });
 
       setTableData(formattedData);
+      // console.log(setTableData);
     } catch (err) {
       console.error('Error cargando historial:', err);
       setError('Error al cargar los datos');
@@ -54,15 +73,15 @@ export default function HistoryPanel({ filtro }) {
     }
   };
 
-  // Definir títulos de columnas según el filtro (SIEMPRE 7 columnas)
+  // Definir títulos de columnas según el filtro (SIEMPRE 5 columnas)
   const getColumnTitles = () => {
-    const baseTitles = ["TRANSACCIÓN", "TÍTULO", "TIPO", "FECHA"];
-    
-    if (filtro === "Compras") {
-      return [...baseTitles, "MÉTODO DE PAGO", "ESTADO", "COSTO"];
-    } else {
-      return [...baseTitles, "COMPRADOR", "ESTADO", "COSTO"];
-    }
+    const baseTitles = ["TRANSACCIÓN", "PRODUCTO"];
+      
+      if (filtro === "Ventas") {
+        return [...baseTitles, "COMPRADOR", "FECHA", "MONTO", "ESTADO"];
+      } else {
+        return [...baseTitles, "FECHA", "MONTO", "ESTADO"];
+      }
   };
 
   if (loading) {
@@ -92,12 +111,14 @@ export default function HistoryPanel({ filtro }) {
     );
   }
 
+  // console.log(tableData.length);
+  // console.table(tableData);
   return (
     <Container className="py-4">
       <Card className="border-0 shadow-sm overflow-hidden">
         {/* key={filtro} fuerza la recreación completa de la tabla al cambiar de pestaña */}
         <DataTable
-          key={filtro}
+          // key={filtro}
           data={tableData}
           options={{
             paging: true,
@@ -105,22 +126,36 @@ export default function HistoryPanel({ filtro }) {
             ordering: true,
             info: true,
             responsive: true,
-            language: {
-              url: "https://cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json"
+            language: {     
+                lengthMenu: "Mostrar _MENU_ registros por página", 
+                zeroRecords: "Ningún registro coincide con tu búsqueda",
+                info: "Mostrando del _START_ al _END_ de un total de _TOTAL_ registros", 
+                infoEmpty: "Ningún registro encontrado",
+                infoFiltered: "(filtrados desde _MAX_ registros totales)",
+                search: "Buscar:",
+                loadingRecords: "Cargando...",
+                paginate: {
+                    first: "<i class='bi bi-chevron-double-left'></i>",
+                    last: "<i class='bi bi-chevron-double-right'></i>", 
+                    next: "<i class='bi bi-chevron-right'></i>", 
+                    previous: "<i class='bi bi-chevron-left'></i>"
+                },
             },
             columnDefs: [
+              { orderable: false, targets: filtro === "Compras" ? 4 : 5 || [] },
+              { searchable: false, targets: filtro === "Compras" ? 4 : 5 || [] },
               // Centrar todas las columnas
               { targets: '_all', className: 'text-center' },
               // Columna de TIPO (índice 2)
               {
-                targets: 2,
+                targets: filtro === "Compras" ? 2 : 3,
                 render: function(data) {
                   return `<span class="px-3 py-1 fw-bold" style="background-color: #D5FFB4; border-radius: 30px; font-size: 12px; color: #1F7627">${data}</span>`;
                 }
               },
               // Columna de ESTADO (índice 5)
               {
-                targets: 5,
+                targets: filtro === "Compras" ? 4 : 5,
                 render: function(data) {
                   const isDelivered = data === "ENTREGADO" || data === "VENDIDO" || data === "COMPLETADO";
                   const color = isDelivered ? "#1F7627" : "#FF6F20";

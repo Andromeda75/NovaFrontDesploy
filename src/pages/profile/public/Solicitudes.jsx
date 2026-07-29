@@ -1,7 +1,7 @@
 import React from 'react';
 import { Container, Row, Col, Button, Form, InputGroup } from 'react-bootstrap';
 import { useState, useEffect } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import PostsCard from "../../../components/cards/PostsCard.jsx"
 import AnsweredCard from "../../../components/cards/AnsweredCard.jsx"
 import CompletedCard from "../../../components/cards/CompletedCard.jsx"
@@ -11,10 +11,12 @@ import MensajeModal from '../../../components/modals/MensajeModal';
 import { useModal } from '../../../components/modals/useModal';
 
 import { peticionesService } from '../../../services/peticionesService.js';
+import { propuestaService } from '../../../services/propuestaService.js';
 import { authService } from '../../../services/authService.js';
 
 function Solicitudes() {
 
+  const navigate = useNavigate();
   const { modal, showModalMessage, hideModal } = useModal();
 
   const categoryColors = {
@@ -36,10 +38,11 @@ function Solicitudes() {
 
   const [peticiones, setPeticiones] = useState([]);
   const [propuestas, setPropuestas] = useState([]);
+  const [enviadas, setEnviadas] = useState([]);
 
   const [filtro, setFiltro] = useState('Publicadas');
   const [subFiltro, setSubFiltro] = useState('Todos');
-  const [subFiltro1, setSubFiltro1] = useState('Aceptadas'); 
+  const [subFiltro1, setSubFiltro1] = useState('Pendientes'); 
   const [subFiltro2, setSubFiltro2] = useState('Publicadas'); 
 
   const { id } = useParams();
@@ -57,9 +60,12 @@ function Solicitudes() {
       const peticionesData = await peticionesService.getMisPeticiones();
       setPeticiones(peticionesData);
 
-      const propuestaData = await peticionesService.getPeticionesAll();
+      const propuestaData = await propuestaService.getOtrasPropuestas();
       setPropuestas(propuestaData);
 
+      const enviadasData = await propuestaService.getMisPropuestas();
+      setEnviadas(enviadasData);
+    
     } catch (err) {
       console.error('Error cargando datos:', err);
       setError('Error al cargar los datos');
@@ -68,47 +74,31 @@ function Solicitudes() {
     }
   };
 
+  
   const user = authService.getCurrentUser();
 
-  const susPropuestas = propuestas.filter(
-       (p) => p.creador_id !== user.id
-  );
-
-  const misPropuestas = propuestas.filter(
-       (p) => p.creador_id === user.id
-  );
-
-  const Finalizadas = propuestas.filter(
-       (p) => p.estado_id === 13
-  );
-
-
-  const filtradasPropuestas = susPropuestas.filter(p => {
+  const filtradasPropuestas = propuestas.filter(p => {
     if (subFiltro === "Todos") return true;
-    if (subFiltro === "Aceptadas") return p.estado_id === 15;
-    if (subFiltro === "Rechazadas") return p.estado_id === 16;
+    if (subFiltro === "Aceptadas") return p.estado === 'aceptada';
+    if (subFiltro === "Rechazadas") return p.estado === 'rechazada';
+
+    return p.estado === 'pendiente';
   });
 
-  const filtroEnviadas = misPropuestas.filter(p => {
-    if (subFiltro1 === "Aceptadas") return p.estado_id === 15;
-    if (subFiltro1 === "Rechazadas") return p.estado_id === 16;
+  const filtradasEnviadas = enviadas.filter(p => {
+    if (subFiltro1 === "Pendientes") return p.estado === 'pendiente';
+    if (subFiltro1 === "Aceptadas") return p.estado === 'aceptada';
+    if (subFiltro1 === "Rechazadas") return p.estado === 'rechazada';
     return true;
   });
 
-  const filtroFinalizadas = Finalizadas.filter(p => {
-    if (subFiltro2 === "Publicadas") {
-      return p.creador_id === user.id;
-    }
+  const publicadasFinalizadas = propuestas.filter(
+    p => p.estado === "finalizada" || p.estado === "en_espera_pago"
+  );
 
-    if (subFiltro2 === "Colaboraciones") {
-      return p.creador_id !== user.id;
-    }
-
-    return true;
-  });
-
-
-console.log(filtroEnviadas);
+  const colaboracionesFinalizadas = enviadas.filter(
+    p => p.estado === "finalizada" || p.estado === "aceptada" || p.estado === "en_espera_pago"
+  );
 
   const [formData, setFormData] = useState({
     titulo: "", 
@@ -120,139 +110,7 @@ console.log(filtroEnviadas);
     estilo: ""
   });
 
-  const peticionesPrueba = [
-    {
-      id: 1,
-      nombre: "Tú",
-      created: "Hace 2 horas",
-      updated: "Hace unas horas",
-      titulo: "Retrato Fotográfico en Acuarela",
-      descripcion: "Estoy buscando un artista que pueda realizar un retrato en acuarela basado en una fotografía personal. El objetivo es convertir la imagen en una pieza artística que conserve los rasgos principales, pero que también refleje un estilo delicado, expresivo y creativo propio del artista.",
-      tipo: "ENCARGO",
-      estado: 1,
-      precio: "$2,000 - $3,000 MXN",
-      tiempo: "2 semanas",
-      categoria: "Fotografía",
-      estilo: "Realista"
-    },
-    {
-      id: 2,
-      nombre: "Tú",
-      created: "Hace 5 horas",
-      updated: "Hace 1 día",
-      titulo: "Diseño de Logotipo Moderno",
-      descripcion: "Busco diseñador gráfico para crear identidad visual moderna para mi marca.",
-      tipo: "ENCARGO",
-      estado: 0,
-      precio: "$1,000 - $2,000 MXN",
-      tiempo: "1 semana",
-      categoria: "Arte Digital",
-      estilo: "Moderno"
-    },
-    {
-      id: 3,
-      nombre: "Tú",
-      created: "Hace 1 día",
-      updated: "Hace 1 día",
-      titulo: "Ilustración Digital Fantasía",
-      descripcion: "Necesito una ilustración estilo fantasía para portada de libro independiente.",
-      tipo: "ENCARGO",
-      estado: 0,
-      precio: "$3,000 - $4,500 MXN",
-      tiempo: "3 semanas",
-      categoria: "Arte Digital",
-      estilo: "Moderno"
-    },
-    {
-      id: 4,
-      nombre: "Estefania Rodriguez",
-      created: "Hace 1 día",
-      updated: "Hoy",
-      titulo: "Se postulo a: Escultura de Jardín Minimalista",
-      descripcion: "Tengo amplia experiencia con acero corten. Podéis ver mi portfolio de esculturas públicas adjunto. Me encantaría participar en este jardín.",
-      tipo: "PROPUESTA",
-      estado: null,
-      precio: "$4,200 MXN",
-      tiempo: "6 semanas",
-      categoria: "Escultura",
-      estilo: "Fantasía"
-
-    },
-    {
-      id: 5,
-      nombre: "Andrea Ruizz",
-      created: "Hace 10 horas",
-      updated: "Hace 5 horas",
-      titulo: "Se postulo a: Escultura de Jardín Minimalista",
-      descripcion: "Tengo amplia experiencia con acero corten. Podéis ver mi portfolio de esculturas públicas adjunto. Me encantaría participar en este jardín.",
-      tipo: "PROPUESTA",
-      estado: null,
-      precio: "$5,400 MXN",
-      tiempo: "8 semanas",
-      categoria: "Escultura",
-      estilo: "Realista",
-    },
-    {
-      id: 6,
-      nombre: "Alejandra Rodriguez",
-      created: "Hace 10 horas",
-      updated: "Hace 5 horas",
-      titulo: "Escultura de Jardín Minimalista",
-      descripcion: "Tengo amplia experiencia con acero corten. Podéis ver mi portfolio de esculturas públicas adjunto. Me encantaría participar en este jardín.",
-      tipo: "PROPUESTA",
-      estado: 2,
-      precio: "$2,700 MXN",
-      tiempo: "4 semanas",
-      categoria: "Escultura",
-      estilo: "Realista"
-    },
-    {
-      id: 7,
-      nombre: "Tú",
-      created: "Hace 10 horas",
-      updated: "Hace 5 horas",
-      titulo: "Ilustración Digital Fantasía",
-      descripcion: "Tengo amplia experiencia con acero corten. Podéis ver mi portfolio de esculturas públicas adjunto. Me encantaría participar en este jardín.",
-      tipo: "PROPUESTA",
-      estado: 1,
-      precio: "$2,700 MXN",
-      tiempo: "4 semanas",
-      categoria: "Arte Digital",
-      estilo: "Moderno",
-    },
-    {
-      id: 8,
-      nombre: "Tú",
-      created: "Hace 10 horas",
-      updated: "Hace 5 horas",
-      titulo: "Ilustración Digital Fantasía",
-      descripcion: "Tengo amplia experiencia con acero corten. Podéis ver mi portfolio de esculturas públicas adjunto. Me encantaría participar en este jardín.",
-      tipo: "PROPUESTA",
-      estado: 0,
-      precio: "$2,700 MXN",
-      tiempo: "4 semanas",
-      categoria: "Arte Digital",
-      estilo: "Fantasía"
-    },
-    {
-      id: 9,
-      nombre: "Tú",
-      created: "Hace 10 horas",
-      updated: "Hace 5 horas",
-      titulo: "Ilustración Digital Fantasía",
-      descripcion: "Tengo amplia experiencia con acero corten. Podéis ver mi portfolio de esculturas públicas adjunto. Me encantaría participar en este jardín.",
-      tipo: "PROPUESTA",
-      estado: 2,
-      precio: "$2,700 MXN",
-      tiempo: "4 semanas",
-      categoria: "Arte Digital",
-      estilo: "Fantasía"
-    },
-  ];
-
-  
   const [showModal, setShowModal] = useState(false);
-  const [peticionData, setPeticionesData] = useState(peticionesPrueba);
   const [categoryColor, setCategoryColors] = useState(categoryColors);
   const [styleColor, setStyleColors] = useState(styleColors);
 
@@ -260,13 +118,11 @@ console.log(filtroEnviadas);
 
   const handleSubmit = async () => {
     try {
-      // Validar campos requeridos
       if (!formData.titulo || !formData.descripcion || !formData.categoria) {
         showModalMessage('Atención', 'Por favor completa todos los campos requeridos', 'warning');
         return;
       }
 
-      // Validar presupuestos
       const min = parseFloat(formData.presupuesto_min);
       const max = parseFloat(formData.presupuesto_max);
       
@@ -280,14 +136,12 @@ console.log(filtroEnviadas);
         return;
       }
 
-      // Validar plazo
       const plazo = parseInt(formData.plazo);
       if (isNaN(plazo) || plazo <= 0) {
         showModalMessage('Atención', 'Por favor ingresa un plazo válido', 'warning');
         return;
       }
 
-      // Mapear categoría a ID
       const categoriaMap = {
         "Arte Visual": 1,
         "Arte Digital": 2,
@@ -307,16 +161,12 @@ console.log(filtroEnviadas);
         estilo: formData.estilo
       };
 
-      console.log('Enviando datos:', data); // Depuración
-
       const response = await peticionesService.postPeticiones(data);
       showModalMessage('¡Éxito!', response.message, 'success');
 
-      // Recargar datos y cerrar modal
       await cargarDatos();
       setShowModal(false);
       
-      // Resetear formulario
       setFormData({
         titulo: '',
         descripcion: '',
@@ -336,11 +186,9 @@ console.log(filtroEnviadas);
 
    const cambiarEstado = async (id, nuevoEstado) => {
     try {
-      // 1. Actualizar en backend
-      await peticionesService.cambiarEstado(id, nuevoEstado);
+      await propuestaService.cambiarEstado(id, nuevoEstado);
 
-      // 2. Actualizar en frontend (para refrescar UI)
-      setPeticionesData(prev =>
+      setPropuestas(prev =>
         prev.map(p =>
           p.id === id ? { ...p, estado: nuevoEstado } : p
         )
@@ -354,6 +202,23 @@ console.log(filtroEnviadas);
     }
   };
 
+  const finalizarTrabajo = async (id) => {
+    try {
+      await propuestaService.cambiarEstado(id, "en_espera_pago");
+      await cargarDatos();
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const pagarTrabajo = async (id) => {
+    try {
+      await propuestaService.cambiarEstado(id, "finalizada");
+      await cargarDatos();
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   if (loading) {
     return (
@@ -392,245 +257,409 @@ console.log(filtroEnviadas);
           </button>
         </div>
 
-        <div className="mb-0">
-          <div className="d-flex align-items-center mb-4">
-              <div className="p-1 rounded-pill d-flex gap-2 shadow-sm" style={{ backgroundColor: '#f6d8a8', width: 'fit-content' }}>
-                  <button 
-                    onClick={() => setFiltro('Publicadas')}
-                    className={`btn rounded-pill px-4 fw-bold small color-2 ${filtro === 'Publicadas' ? 'bg-white shadow-sm fw-bold color-2' : 'opacity-75'}`}>
-                    Publicadas
-                  </button>
-                  <button 
-                    onClick={() => setFiltro('Recibidas')}
-                    className={`btn rounded-pill px-4 fw-bold small color-2 ${filtro === 'Recibidas' ? 'bg-white shadow-sm fw-bold color-2' : 'opacity-75'}`}>
-                    Recibidas
-                  </button>
-                  <button 
-                    onClick={() => setFiltro('Enviadas')}
-                    className={`btn rounded-pill px-4 fw-bold small color-2 ${filtro === 'Enviadas' ? 'bg-white shadow-sm fw-bold color-2' : 'opacity-75'}`}>
-                    Enviadas
-                  </button>
-                  <button 
-                    onClick={() => setFiltro('Finalizadas')}
-                    className={`btn rounded-pill px-4 fw-bold small color-2 ${filtro === 'Finalizadas' ? 'bg-white shadow-sm fw-bold color-2' : 'opacity-75'}`}>
-                    Finalizadas
-                  </button>
-              </div>
+        <div className="mb-4">
+          {/* FILTROS PRINCIPALES - ESTILO PESTAÑAS CON LÍNEA */}
+          <div className="d-flex gap-4 border-bottom border-2 pb-2" style={{ borderColor: '#e0e0e0' }}>
+            <button
+              onClick={() => setFiltro('Publicadas')}
+              className="btn btn-link text-decoration-none p-0 position-relative"
+              style={{ 
+                fontSize: '16px',
+                fontWeight: filtro === 'Publicadas' ? 600 : 400,
+                color: filtro === 'Publicadas' ? '#9A5F25' : '#6c757d',
+                transition: 'all 0.3s ease',
+                paddingBottom: '10px'
+              }}
+            >
+              Publicadas
+              {filtro === 'Publicadas' && (
+                <span 
+                  className="position-absolute"
+                  style={{
+                    bottom: '-10px',
+                    left: 0,
+                    right: 0,
+                    height: '3px',
+                    backgroundColor: '#9A5F25',
+                    borderRadius: '2px'
+                  }}
+                />
+              )}
+            </button>
+
+            <button
+              onClick={() => setFiltro('Recibidas')}
+              className="btn btn-link text-decoration-none p-0 position-relative"
+              style={{ 
+                fontSize: '16px',
+                fontWeight: filtro === 'Recibidas' ? 600 : 400,
+                color: filtro === 'Recibidas' ? '#9A5F25' : '#6c757d',
+                transition: 'all 0.3s ease',
+                paddingBottom: '10px'
+              }}
+            >
+              Recibidas
+              {filtro === 'Recibidas' && (
+                <span 
+                  className="position-absolute"
+                  style={{
+                    bottom: '-10px',
+                    left: 0,
+                    right: 0,
+                    height: '3px',
+                    backgroundColor: '#9A5F25',
+                    borderRadius: '2px'
+                  }}
+                />
+              )}
+            </button>
+
+            <button
+              onClick={() => setFiltro('Enviadas')}
+              className="btn btn-link text-decoration-none p-0 position-relative"
+              style={{ 
+                fontSize: '16px',
+                fontWeight: filtro === 'Enviadas' ? 600 : 400,
+                color: filtro === 'Enviadas' ? '#9A5F25' : '#6c757d',
+                transition: 'all 0.3s ease',
+                paddingBottom: '10px'
+              }}
+            >
+              Enviadas
+              {filtro === 'Enviadas' && (
+                <span 
+                  className="position-absolute"
+                  style={{
+                    bottom: '-10px',
+                    left: 0,
+                    right: 0,
+                    height: '3px',
+                    backgroundColor: '#9A5F25',
+                    borderRadius: '2px'
+                  }}
+                />
+              )}
+            </button>
+
+            <button
+              onClick={() => setFiltro('Finalizadas')}
+              className="btn btn-link text-decoration-none p-0 position-relative"
+              style={{ 
+                fontSize: '16px',
+                fontWeight: filtro === 'Finalizadas' ? 600 : 400,
+                color: filtro === 'Finalizadas' ? '#9A5F25' : '#6c757d',
+                transition: 'all 0.3s ease',
+                paddingBottom: '10px'
+              }}
+            >
+              Finalizadas
+              {filtro === 'Finalizadas' && (
+                <span 
+                  className="position-absolute"
+                  style={{
+                    bottom: '-10px',
+                    left: 0,
+                    right: 0,
+                    height: '3px',
+                    backgroundColor: '#9A5F25',
+                    borderRadius: '2px'
+                  }}
+                />
+              )}
+            </button>
           </div>
-          <div className="row g-4">
-            {filtro === 'Publicadas' && (
-              <>
-                  {peticiones.length > 0 ? (
 
-                      peticiones.map(item => (
-                          <div key={item.id} className="col-12 col-md-6 col-lg-4 d-flex animate__animated animate__fadeIn">
-                              <PostsCard 
-                                {...item}
-                                setPeticiones={setPeticiones}
-                                filtro={filtro}
-                                categoryColor={categoryColor}
-                                styleColor={styleColor}/>
-                          </div>
-                      ))
+          {/* SUBFILTROS */}
+          {filtro === 'Recibidas' && (
+            <div className="d-flex gap-3 mb-2 mt-3">
+              <button
+                onClick={() => setSubFiltro("Todos")}
+                className={`btn rounded-pill px-4 fw-bold ${
+                  subFiltro === "Todos"
+                    ? "btn-secondary"
+                    : "btn-outline-secondary"
+                }`}>
+                <i className="bi bi-grid me-2"></i>
+                Todos
+              </button>
 
-                  ) : (
+              <button
+                onClick={() => setSubFiltro("Aceptadas")}
+                className={`btn rounded-pill px-4 fw-bold ${
+                  subFiltro === "Aceptadas"
+                    ? "btn-success"
+                    : "btn-outline-success"
+                }`}>
+                <i className="bi bi-check2-circle me-2"></i>
+                Aceptadas
+              </button>
 
-                      // mensaje cuando no hay datos
-                      <div className="col-12 text-center py-5">
-                          <i className="bi bi-folder-x fs-1 text-muted"></i>
-                          <h5 className="mt-3 text-muted">
-                              Aún no tienes ninguna publicacion
-                          </h5>
+              <button
+                onClick={() => setSubFiltro("Rechazadas")}
+                className={`btn rounded-pill px-4 fw-bold ${
+                  subFiltro === "Rechazadas"
+                    ? "btn-danger"
+                    : "btn-outline-danger"
+                }`}>
+                <i className="bi bi-x-circle me-2"></i>
+                Rechazadas
+              </button>
+            </div>
+          )}
+
+          {filtro === 'Enviadas' && (
+            <div className="d-flex gap-3 mb-2 mt-3">
+              <button
+                onClick={() => setSubFiltro1("Pendientes")}
+                className={`btn rounded-pill px-4 fw-bold ${
+                  subFiltro1 === "Pendientes"
+                    ? "btn-warning"
+                    : "btn-outline-warning"
+                }`}>
+                <i className="bi bi-clock me-2"></i>
+                Pendientes
+              </button>
+
+              <button
+                onClick={() => setSubFiltro1("Aceptadas")}
+                className={`btn rounded-pill px-4 fw-bold ${
+                  subFiltro1 === "Aceptadas"
+                    ? "btn-success"
+                    : "btn-outline-success"
+                }`}>
+                <i className="bi bi-check2-circle me-2"></i>
+                Aceptadas
+              </button>
+
+              <button
+                onClick={() => setSubFiltro1("Rechazadas")}
+                className={`btn rounded-pill px-4 fw-bold ${
+                  subFiltro1 === "Rechazadas"
+                    ? "btn-danger"
+                    : "btn-outline-danger"
+                }`}>
+                <i className="bi bi-x-circle me-2"></i>
+                Rechazadas
+              </button>
+            </div>
+          )}
+
+          {filtro === 'Finalizadas' && (
+            <div className="d-flex gap-3 mb-2 mt-3">
+              <button
+                onClick={() => setSubFiltro2("Publicadas")}
+                className={`btn rounded-pill px-4 fw-bold ${
+                  subFiltro2 === "Publicadas"
+                    ? "btn-success"
+                    : "btn-outline-success"
+                }`}>
+                <i className="bi bi-check-circle-fill me-2"></i>
+                Publicadas
+              </button>
+
+              <button
+                onClick={() => setSubFiltro2("Colaboraciones")}
+                className={`btn rounded-pill px-4 fw-bold ${
+                  subFiltro2 === "Colaboraciones"
+                    ? "btn-primary"
+                    : "btn-outline-primary"
+                }`}>
+                <i className="bi bi-people-fill me-2"></i>
+                Colaboraciones
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* CONTENIDO DE LAS SECCIONES */}
+        <div className="row g-4">
+          {/* SECCIÓN PUBLICADAS */}
+          {filtro === 'Publicadas' && (
+            <>
+                {peticiones.length > 0 ? (
+                    peticiones.map(item => (
+                        <div key={item.id} className="col-12 col-md-6 col-lg-4 d-flex animate__animated animate__fadeIn">
+                            <PostsCard 
+                              id={item.id}
+                              creador_id={item.creador_id}
+                              creador_nombre={item.creador_nombre}
+                              creador_foto={item.creador_foto}
+                              artista_id={item.artista_id}
+                              artista_nombre={item.artista_nombre}
+                              artista_foto={item.artista_foto}
+                              fecha_publicacion={item.fecha_publicacion}
+                              categoria_nombre={item.categoria_nombre}
+                              estilo={item.estilo}
+                              titulo={item.titulo}
+                              descripcion={item.descripcion}
+                              presupuesto_min_mxn={item.presupuesto_min_mxn}
+                              presupuesto_max_mxn={item.presupuesto_max_mxn}
+                              precio={item.precio}
+                              plazo_entrega_semanas={item.plazo_entrega_semanas}
+                              estado_id={item.estado_id}
+                              estado={item.estado}
+                              setPeticiones={setPeticiones}
+                              filtro={filtro}
+                              categoryColor={categoryColor}
+                              styleColor={styleColor}
+                              onChatClick={(propuestaId, otroId, otroNombre) => {
+                                // ✅ AGREGAR replace: true
+                                navigate(`/peticiones?tab=messages&propuesta=${propuestaId}&usuario=${otroId}&nombre=${encodeURIComponent(otroNombre)}`, { replace: true });
+                              }}
+                            />
+                        </div>
+                    ))
+                ) : (
+                    <div className="col-12 text-center py-5">
+                        <i className="bi bi-folder-x fs-1 text-muted"></i>
+                        <h5 className="mt-3 text-muted">
+                            Aún no tienes ninguna publicacion
+                        </h5>
+                    </div>
+                )}
+            </>
+          )}
+
+          {/* SECCIÓN RECIBIDAS */}
+          {filtro === 'Recibidas' && (
+            <>
+              {filtradasPropuestas.length > 0 ? (
+                  filtradasPropuestas.map(item => (
+                      <div key={item.id} className="col-12 col-md-6 col-lg-4 d-flex animate__animated animate__fadeIn">
+                          <PostsCard 
+                            id={item.id}
+                            creador_id={item.creador_id}
+                            creador_nombre={item.creador_nombre}
+                            creador_foto={item.creador_foto}
+                            artista_id={item.artista_id}
+                            artista_nombre={item.artista_nombre}
+                            artista_foto={item.artista_foto}
+                            fecha_publicacion={item.fecha_publicacion}
+                            categoria_nombre={item.categoria_nombre}
+                            estilo={item.estilo}
+                            titulo={item.titulo}
+                            descripcion={item.descripcion}
+                            presupuesto_min_mxn={item.presupuesto_min_mxn}
+                            presupuesto_max_mxn={item.presupuesto_max_mxn}
+                            precio={item.precio}
+                            plazo_entrega_semanas={item.plazo_entrega_semanas}
+                            estado_id={item.estado_id}
+                            estado={item.estado}
+                            setPropuestas={setPropuestas}
+                            cambiarEstado={cambiarEstado}
+                            filtro={filtro}
+                            categoryColor={categoryColor}
+                            styleColor={styleColor}
+                            onChatClick={(propuestaId, otroId, otroNombre) => {
+                              // ✅ AGREGAR replace: true
+                              navigate(`/peticiones?tab=messages&propuesta=${propuestaId}&usuario=${otroId}&nombre=${encodeURIComponent(otroNombre)}`, { replace: true });
+                            }}
+                          />
                       </div>
+                  ))
+              ) : (
+                  <div className="col-12 text-center py-5">
+                      <i className="bi bi-folder-x fs-1 text-muted"></i>
+                      <h5 className="mt-3 text-muted">
+                          Aún no tienes ninguna propuesta
+                      </h5>
+                  </div>
+              )}
+            </>
+          )}
 
-                  )}
-              </>
-            )}
-            {(filtro === 'Recibidas') && (
-              <div className="d-flex gap-3 mb-2">
-                <button
-                  onClick={() => setSubFiltro("Todos")}
-                  className={`btn rounded-pill px-4 fw-bold ${
-                    subFiltro === "Todos"
-                      ? "btn-secondary"
-                      : "btn-outline-secondary"
-                  }`}>
-                  <i className="bi bi-grid me-2"></i>
-                  Todos
-                </button>
-
-                <button
-                  onClick={() => setSubFiltro("Aceptadas")}
-                  className={`btn rounded-pill px-4 fw-bold ${
-                    subFiltro === "Aceptadas"
-                      ? "btn-success"
-                      : "btn-outline-success"
-                  }`}>
-                  <i className="bi bi-check2-circle me-2"></i>
-                  Aceptadas
-                </button>
-
-                <button
-                  onClick={() => setSubFiltro("Rechazadas")}
-                  className={`btn rounded-pill px-4 fw-bold ${
-                    subFiltro === "Rechazadas"
-                      ? "btn-danger"
-                      : "btn-outline-danger"
-                  }`}>
-                  <i className="bi bi-x-circle me-2"></i>
-                  Rechazadas
-                </button>
-              </div>
-            )}
-            {filtro === 'Recibidas' && (
-              <>
-                  {filtradasPropuestas.length > 0 ? (
-
-                      filtradasPropuestas.map(item => (
-                          <div key={item.id} className="col-12 col-md-6 col-lg-4 d-flex animate__animated animate__fadeIn">
-                              <PostsCard 
-                                {...item}
-                                setPeticiones={setPeticiones}
-                                cambiarEstado={cambiarEstado}
-                                filtro={filtro}
-                                categoryColor={categoryColor}
-                                styleColor={styleColor}/>
-                          </div>
-                      ))
-
-                  ) : (
-
-                      // mensaje cuando no hay datos
-                      <div className="col-12 text-center py-5">
-                          <i className="bi bi-folder-x fs-1 text-muted"></i>
-                          <h5 className="mt-3 text-muted">
-                              Aún no tienes ninguna propuesta
-                          </h5>
+          {/* SECCIÓN ENVIADAS */}
+          {filtro === 'Enviadas' && (
+            <>
+              {filtradasEnviadas.length > 0 ? (
+                  filtradasEnviadas.map(item => (
+                      <div key={item.id} className="col-12 col-md-6 col-lg-4 d-flex animate__animated animate__fadeIn">
+                          <PostsCard 
+                            id={item.id}
+                            creador_id={item.creador_id}
+                            creador_nombre={item.creador_nombre}
+                            creador_foto={item.creador_foto}
+                            artista_id={item.artista_id}
+                            artista_nombre={item.artista_nombre}
+                            artista_foto={item.artista_foto}
+                            fecha_publicacion={item.fecha_publicacion}
+                            categoria_nombre={item.categoria_nombre}
+                            estilo={item.estilo}
+                            titulo={item.titulo}
+                            descripcion={item.descripcion}
+                            presupuesto_min_mxn={item.presupuesto_min_mxn}
+                            presupuesto_max_mxn={item.presupuesto_max_mxn}
+                            precio={item.precio}
+                            plazo_entrega_semanas={item.plazo_entrega_semanas}
+                            estado_id={item.estado_id}
+                            estado={item.estado}
+                            setPropuestas={setPropuestas}
+                            filtro={filtro}
+                            categoryColor={categoryColor}
+                            styleColor={styleColor}
+                            onChatClick={(propuestaId, otroId, otroNombre) => {
+                              // ✅ AGREGAR replace: true
+                              navigate(`/peticiones?tab=messages&propuesta=${propuestaId}&usuario=${otroId}&nombre=${encodeURIComponent(otroNombre)}`, { replace: true });
+                            }}
+                          />
                       </div>
+                  ))
+              ) : (
+                  <div className="col-12 text-center py-5">
+                      <i className="bi bi-folder-x fs-1 text-muted"></i>
+                      <h5 className="mt-3 text-muted">
+                          Aún no tienes ninguna propuesta
+                      </h5>
+                  </div>
+              )}
+            </>
+          )}
 
-                  )}
-              </>
-            )}
-            {(filtro === 'Enviadas') && (
-              <div className="d-flex gap-3 mb-2">
-                <button
-                  onClick={() => setSubFiltro1("Aceptadas")}
-                  className={`btn rounded-pill px-4 fw-bold ${
-                    subFiltro1 === "Aceptadas"
-                      ? "btn-success"
-                      : "btn-outline-success"
-                  }`}>
-                  <i className="bi bi-check2-circle me-2"></i>
-                  Aceptadas
-                </button>
+          {/* SECCIÓN FINALIZADAS */}
+          {filtro === 'Finalizadas' && (
+            <>
+              {subFiltro2 === "Publicadas" &&
+                (publicadasFinalizadas.length > 0 ? (
+                  publicadasFinalizadas.map(item => (
+                    <div key={item.id} className="col-12 col-md-6 col-lg-4 d-flex">
+                      <CompletedCard 
+                        {...item}  
+                        filtroFinalizadas={subFiltro2}
+                        finalizarTrabajo={finalizarTrabajo}
+                        pagarTrabajo={pagarTrabajo}
+                      />
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-12 text-center py-5">
+                    <h5 className="text-muted">No tienes publicaciones finalizadas</h5>
+                  </div>
+                ))
+              }
 
-                <button
-                  onClick={() => setSubFiltro1("Rechazadas")}
-                  className={`btn rounded-pill px-4 fw-bold ${
-                    subFiltro1 === "Rechazadas"
-                      ? "btn-danger"
-                      : "btn-outline-danger"
-                  }`}>
-                  <i className="bi bi-x-circle me-2"></i>
-                  Rechazadas
-                </button>
-              </div>
-            )}
-            {filtro === 'Enviadas' && (
-              <>
-                  {filtroEnviadas.length > 0 ? (
-
-                      filtroEnviadas.map(item => (
-                          <div key={item.id} className="col-12 col-md-6 col-lg-4 d-flex animate__animated animate__fadeIn">
-                              <PostsCard 
-                                {...item}
-                                setPeticiones={setPeticiones}
-                                filtro={filtro}
-                                categoryColor={categoryColor}
-                                styleColor={styleColor}/>
-                          </div>
-                      ))
-
-                  ) : (
-
-                      // mensaje cuando no hay datos
-                      <div className="col-12 text-center py-5">
-                          <i className="bi bi-folder-x fs-1 text-muted"></i>
-                          <h5 className="mt-3 text-muted">
-                              Aún no tienes ninguna propuesta
-                          </h5>
-                      </div>
-
-                  )}
-              </>
-            )}
-            {(filtro === 'Finalizadas') && (
-              <div className="d-flex gap-3 mb-2">
-                <button
-                  onClick={() => setSubFiltro2("Publicadas")}
-                  className={`btn rounded-pill px-4 fw-bold ${
-                    subFiltro2 === "Publicadas"
-                      ? "btn-success"
-                      : "btn-outline-success"
-                  }`}>
-                  <i className="bi bi-check-circle-fill me-2"></i>
-                  Publicadas
-                </button>
-
-                <button
-                  onClick={() => setSubFiltro2("Colaboraciones")}
-                  className={`btn rounded-pill px-4 fw-bold ${
-                    subFiltro2 === "Colaboraciones"
-                      ? "btn-primary"
-                      : "btn-outline-primary"
-                  }`}>
-                  <i className="bi bi-people-fill me-2"></i>
-                  Colaboraciones
-                </button>
-              </div>
-            )}
-            {/* {(filtro === 'Finalizadas') && peticionData
-              .filter(peticion => peticion.tipo === "PROPUESTA" && peticion.estado === 2)
-              .filter(peticion => subFiltro2 === "Publicadas"
-                  ? peticion.nombre === "Tú"
-                  : peticion.nombre !== "Tú"
-              )
-              .map((peticion) => (
-                <div key={peticion.id} className="col-12 col-md-6 col-lg-4 d-flex animate__animated animate__fadeIn">
-                  <CompletedCard 
-                    peticion={peticion}
-                    filtro={filtro}/>
-                </div>
-            ))} */}
-            {filtro === 'Finalizadas' && (
-              <>
-                  {filtroFinalizadas.length > 0 ? (
-
-                      filtroFinalizadas.map(item => (
-                          <div key={item.id} className="col-12 col-md-6 col-lg-4 d-flex animate__animated animate__fadeIn">
-                              <CompletedCard 
-                                {...item}
-                                setPeticiones={setPeticiones}
-                                filtro={filtro}/>
-                          </div>
-                      ))
-
-                  ) : (
-
-                      // mensaje cuando no hay datos
-                      <div className="col-12 text-center py-5">
-                          <i className="bi bi-folder-x fs-1 text-muted"></i>
-                          <h5 className="mt-3 text-muted">
-                              Aún no tienes ninguna propuesta
-                          </h5>
-                      </div>
-
-                  )}
-              </>
-            )}
-          </div>
+              {subFiltro2 === "Colaboraciones" &&
+                (colaboracionesFinalizadas.length > 0 ? (
+                  colaboracionesFinalizadas.map(item => (
+                    <div key={item.id} className="col-12 col-md-6 col-lg-4 d-flex">
+                      <CompletedCard 
+                        {...item}  
+                        filtroFinalizadas={subFiltro2}
+                        finalizarTrabajo={finalizarTrabajo}
+                        pagarTrabajo={pagarTrabajo}
+                      />
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-12 text-center py-5">
+                    <h5 className="text-muted">No tienes colaboraciones finalizadas</h5>
+                  </div>
+                ))
+              }
+            </>
+          )}
         </div>
       </div>
+
       {/* MODAL */}
       {showModal && (
         <PeticionModal

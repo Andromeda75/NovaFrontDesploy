@@ -1,15 +1,20 @@
 import axios from 'axios';
 
-// Usa la variable de entorno para la URL base
+// const api = axios.create({
+//     baseURL: '/api',
+//     headers: {
+//         'Content-Type': 'application/json'
+//     }
+// });
+
+// Para el docker
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || '/api',
+    baseURL: 'http://localhost:5000/api',
     headers: {
         'Content-Type': 'application/json'
-    },
-    timeout: 30000
+    }
 });
 
-// Interceptor para añadir token
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
@@ -21,7 +26,6 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Interceptor para manejar errores de autenticación
 api.interceptors.response.use(
     (response) => response,
     (error) => {
@@ -29,10 +33,7 @@ api.interceptors.response.use(
             localStorage.removeItem('token');
             localStorage.removeItem('usuario');
             localStorage.removeItem('rol_id');
-            localStorage.removeItem('user_id');
-            if (!window.location.pathname.includes('/login')) {
-                window.location.href = '/login';
-            }
+            window.location.href = '/login';
         }
         return Promise.reject(error);
     }

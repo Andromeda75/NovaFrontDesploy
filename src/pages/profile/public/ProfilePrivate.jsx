@@ -9,6 +9,8 @@ import Historial from './Historial.jsx';
 import Resumen from './Resumen.jsx';
 import Solicitudes from './Solicitudes.jsx';
 import Subasta from './Subastas.jsx';
+import Tickets from './Tickets.jsx';
+import Pedidos from './Pedidos.jsx';
 
 
 
@@ -39,13 +41,17 @@ const FavoritosView = () => (
   <Favoritos />
 
 );
-const HistorialView = () => (
-  <Historial />
-
-
-
+const TicketsView = () => (
+  <Tickets />
 );
 
+const HistorialView = () => (
+  <Historial />
+);
+
+const PedidosView = () => (
+  <Pedidos />
+);
 
 const ConfiguracionView = () => (
 < Configuracion />
@@ -78,7 +84,9 @@ useEffect(() => {
     { icon: 'bi-chat-left-dots', label: 'Solicitudes' },
     { icon: 'bi-star', label: 'Reputación' },
     { icon: 'bi-heart', label: 'Favoritos' },
+    { icon: 'bi-ticket', label: 'Tickets' },
     { icon: 'bi-clock-history', label: 'Historial' },
+    { icon: 'bi-box-seam', label: 'Pedidos' },
     { icon: 'bi-gear', label: 'Configuración' },
     { icon: 'bi-box-arrow-right', label: 'Cerrar Sesión' },
   ];
@@ -103,7 +111,9 @@ useEffect(() => {
       case 'Solicitudes': return <SolicitudesView />;
       case 'Reputación': return <ReputacionView />;
       case 'Favoritos': return <FavoritosView />;
+      case 'Tickets': return <TicketsView />;
       case 'Historial': return <HistorialView />;
+      case 'Pedidos': return <PedidosView />;
       case 'Configuración': return <ConfiguracionView />;
       default: return <Resumen />;
     }

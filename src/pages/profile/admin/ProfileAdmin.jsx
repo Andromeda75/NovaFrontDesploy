@@ -1,40 +1,63 @@
+// frontend/src/pages/profile/admin/ProfileAdmin.jsx
 import React, { useState, useEffect } from 'react';
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import Configuracion from './Configuracion.jsx';
 import Dashborad from './Dashboard.jsx';
 import Verificaciones from './Verificaciones.jsx';
 import Usuarios from './Usuarios.jsx';
 import Sitemasdetickets from './SistemaTickets.jsx';
 import Monetizacion from './Monetizacion.jsx';
+import ClaveXRol from './ClaveXRol.jsx';
+import GestorPermisos from './GestorPermisos.jsx';
 import Operaciones from './Operaciones.jsx';
 
-import { authService } from '../../../services/authService.js';
+import { authService } from "../../../services/authService";
 
 const Perfiladmin = () => {
+  const navigate = useNavigate();
   const [seccionActiva, setSeccionActiva] = useState('Dashboard');
-
   const [pendientes, setPendientes] = useState(0);
   
+  // ✅ VERIFICAR SI ES ADMIN O MODERADOR
+  const esAdmin = authService.tieneRol(1);
+  const esModerador = authService.tieneRol(4);
+  const puedeAcceder = esAdmin || esModerador;
+
+  // ✅ Si no tiene permisos, redirigir al inicio
+  useEffect(() => {
+    if (!puedeAcceder) {
+      navigate('/');
+    }
+  }, [puedeAcceder, navigate]);
+
+  // ✅ Mostrar mensaje de acceso denegado mientras redirige
+  if (!puedeAcceder) {
+    return (
+      <div className="container mt-5 text-center">
+        <div className="alert alert-danger p-5 shadow-sm" style={{ borderRadius: '20px' }}>
+          <i className="bi bi-shield-lock fs-1 d-block mb-3"></i>
+          <h3 className="fw-bold">Acceso denegado</h3>
+          <p className="text-muted">No tienes permisos de administrador para ver esta página.</p>
+          <a href="/" className="btn btn-linear-gradient mt-3 px-4 py-2 text-white text-decoration-none">
+            Volver al inicio
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   const obtenerPendientes = async () => {
-
     try {
-
       const data = await authService.getPendientes();
       setPendientes(data.total_pendientes);
-
     } catch (error) {
-
       console.error(error);
-
     }
-
   };
 
   useEffect(() => {
     obtenerPendientes();
   }, []);
-
 
   const menuItems = [
     { icon: 'bi-grid', label: 'Dashboard' },
@@ -43,6 +66,10 @@ const Perfiladmin = () => {
     { icon: 'bi-ticket', label: 'Sistemas de Tickets' },
     { icon: 'bi-currency-dollar', label: 'Monetización' },
     { icon: 'bi-gear-wide-connected', label: 'Operaciones' },
+    // ClaveXRol SOLO visible para Administradores (no para moderadores)
+    //...(esAdmin ? [{ icon: 'bi-key', label: 'ClaveXRol' }] : []),
+    // Gestor de Permisos SOLO visible para Administradores (no para moderadores)
+    //...(esAdmin ? [{ icon: 'bi-shield-check', label: 'Gestor de Permisos' }] : []),
     { icon: 'bi-gear', label: 'Configuración' },
     { icon: 'bi-box-arrow-right', label: 'Cerrar Sesión' },
   ];
@@ -55,6 +82,8 @@ const Perfiladmin = () => {
       case 'Sistemas de Tickets': return <Sitemasdetickets />;
       case 'Monetización': return <Monetizacion />;
       case 'Operaciones': return <Operaciones />;
+      //case 'ClaveXRol': return <ClaveXRol />;
+     // case 'Gestor de Permisos': return <GestorPermisos />;
       case 'Configuración': return <Configuracion />;
       default: return <Dashborad />;
     }

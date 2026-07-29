@@ -1,3 +1,4 @@
+// frontend/src/pages/profile/admin/Configuracion.jsx
 import React, { useState, useEffect } from 'react';
 import ConfirmarCategoriaModal from '../../../components/modals/confirmaciones/ConfirmarCategoriaModal';
 import PoliticasPanel from '../../../components/modals/PoliticasModal';
@@ -19,7 +20,11 @@ const ConfiguracionGlobal = () => {
   const [loading, setLoading] = useState(true);
   
   // Estado para el documento
-  const [documentoInfo, setDocumentoInfo] = useState({ url: null, nombre: null, fecha: null });
+  const [documentoInfo, setDocumentoInfo] = useState({ 
+    url: null, 
+    nombre: null, 
+    existe: false 
+  });
   
   const [categorias, setCategorias] = useState([]);
   const [politicas, setPoliticas] = useState({
@@ -34,7 +39,6 @@ const ConfiguracionGlobal = () => {
     successGreen: '#2d6a4f'
   };
 
-  // Cargar datos al montar el componente
   useEffect(() => {
     cargarDatos();
     cargarDocumentoInfo();
@@ -43,11 +47,9 @@ const ConfiguracionGlobal = () => {
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      // Cargar categorías
       const categoriasData = await configuracionService.getCategorias();
       setCategorias(categoriasData);
       
-      // Cargar políticas
       const politicasData = await configuracionService.getPoliticas();
       setPoliticas(politicasData);
     } catch (error) {
@@ -132,7 +134,7 @@ const ConfiguracionGlobal = () => {
     }
   };
 
-  // Subir documento
+  // Subir documento (convierte a Base64 automáticamente)
   const handleSubirDocumento = () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -146,6 +148,7 @@ const ConfiguracionGlobal = () => {
         }
         
         try {
+          // El servicio ya convierte a Base64
           await configuracionService.uploadDocumento(file);
           await cargarDocumentoInfo();
           await cargarDatos();
@@ -159,7 +162,6 @@ const ConfiguracionGlobal = () => {
     input.click();
   };
 
-  // Eliminar documento
   const handleEliminarDocumento = async () => {
     try {
       await configuracionService.deleteDocumento();
@@ -171,10 +173,21 @@ const ConfiguracionGlobal = () => {
     }
   };
 
-  // Ver documento
+  // Ver documento (abre en nueva ventana)
   const handleVerDocumento = () => {
     if (documentoInfo.url) {
-      window.open(documentoInfo.url, '_blank');
+      // Abrir el Base64 en una nueva ventana
+      const ventana = window.open('', '_blank');
+      if (ventana) {
+        ventana.document.write(`
+          <html>
+            <head><title>${documentoInfo.nombre || 'Documento'}</title></head>
+            <body style="margin:0;padding:0;height:100vh;">
+              <iframe src="${documentoInfo.url}" style="width:100%;height:100%;border:none;"></iframe>
+            </body>
+          </html>
+        `);
+      }
     } else {
       showModalMessage('Información', 'No hay documento disponible', 'info');
     }
@@ -230,7 +243,7 @@ const ConfiguracionGlobal = () => {
     <>
       <div className="animate__animated animate__fadeIn">
         <h1 className="fw-bold display-5 color-1 mb-0" style={{ fontSize: '28px' }}>Configuración Global</h1>
-        <p className="text-muted mb-4 color-2" style={{ fontSize: '18px' }}>Controla las categorías, políticas y banners de la plataforma.</p>
+        <p className="text-muted mb-4 color-2" style={{ fontSize: '18px' }}>Controla las categorías, políticas y documentos de la plataforma.</p>
 
         {/* SECCIÓN CATEGORÍAS */}
         <section className="mb-5">
@@ -294,12 +307,10 @@ const ConfiguracionGlobal = () => {
                   <div>
                     <h5 className="fw-bold mb-0" style={{ color: brand.darkBrown }}>{politicas.titulo}</h5>
                     <p className="text-muted small mb-0 text-uppercase" style={{ fontSize: '0.65rem' }}>Editado {politicas.fechaEdicion}</p>
-                    {documentoInfo.nombre && (
-                      <p className="text-muted small mb-0 mt-1">
-                        <i className="bi bi-file-pdf me-1"></i> 
-                        Documento: {documentoInfo.nombre}
-                      </p>
-                    )}
+                    <p className="text-muted small mb-0 mt-1">
+                      <i className={`bi ${documentoInfo.existe ? 'bi-file-pdf text-success' : 'bi-file-x text-danger'} me-1`}></i> 
+                      {documentoInfo.existe ? `Documento: ${documentoInfo.nombre}` : 'No hay documento cargado'}
+                    </p>
                   </div>
                   <i 
                     className="bi bi-pencil-square" 
@@ -309,7 +320,7 @@ const ConfiguracionGlobal = () => {
                 </div>
               </div>
               <div className="d-flex gap-2 flex-wrap">
-                {documentoInfo.url && (
+                {documentoInfo.existe && (
                   <>
                     <button 
                       onClick={handleVerDocumento}
@@ -333,7 +344,7 @@ const ConfiguracionGlobal = () => {
                   style={{ backgroundColor: brand.successGreen, borderRadius: '10px' }}
                 >
                   <i className="bi bi-upload me-2"></i> 
-                  {documentoInfo.url ? 'Actualizar Documento' : 'Subir Documento'}
+                  {documentoInfo.existe ? 'Actualizar Documento' : 'Subir Documento'}
                 </button>
               </div>
             </div>
