@@ -1022,41 +1022,61 @@ useEffect(() => {
   };
 
 // ========== ELIMINAR SUBASTA ==========
-const handleEliminarClick = (subasta) => {
-    // ✅ OBTENER USUARIO ACTUAL
-    const user = authService.getCurrentUser();
+const handleEliminarClick = async (subastaId) => {
+    console.log('🔍 Eliminar - ID recibido:', subastaId);
     
+    // Si recibimos un ID, buscar la subasta completa en el estado
+    let subasta = subastaId;
+    if (typeof subastaId === 'number' || typeof subastaId === 'string') {
+        // Buscar en el estado de subastas
+        const id = Number(subastaId);
+        subasta = subastas.find(s => Number(s.id) === id);
+        
+        if (!subasta) {
+            // Si no está en el estado, obtener del backend
+            try {
+                subasta = await subastaService.getSubastaById(id);
+            } catch (error) {
+                console.error('Error obteniendo subasta:', error);
+                showModalMessage('Error', 'No se pudo obtener la información de la subasta', 'error');
+                return;
+            }
+        }
+    }
+    
+    console.log('🔍 Subasta encontrada:', subasta);
+    
+    if (!subasta || typeof subasta === 'number') {
+        showModalMessage('Error', 'No se encontró la subasta', 'error');
+        return;
+    }
+    
+    const user = authService.getCurrentUser();
     if (!user) {
         showModalMessage('Error', 'No has iniciado sesión', 'error');
         return;
     }
 
-    // ✅ BUSCAR EL VENDEDOR_ID EN VARIAS PROPIEDADES POSIBLES
-    const vendedorId = subasta.vendedor_id || subasta.vendedorId || subasta.vendedor?.id || subasta.user_id || subasta.usuario_id;
-    
-    console.log('🔍 Subasta completa:', subasta);
-    console.log('🔍 Todas las propiedades:', Object.keys(subasta));
-    console.log('🔍 Vendedor ID encontrado:', vendedorId);
+    // Buscar el vendedor en varias propiedades
+    const vendedorId = subasta.vendedor_id || 
+                       subasta.vendedorId || 
+                       subasta.vendedor?.id || 
+                       subasta.user_id || 
+                       subasta.usuario_id;
     
     if (!vendedorId) {
         showModalMessage('Error', 'No se pudo identificar al vendedor de esta subasta', 'error');
         return;
     }
 
-    // ✅ CONVERTIR AMBOS A NÚMERO PARA COMPARACIÓN SEGURA
     const userId = Number(user.id);
     const vendedorIdNum = Number(vendedorId);
-    
-    console.log('🔍 userId (número):', userId);
-    console.log('🔍 vendedorId (número):', vendedorIdNum);
-    console.log('🔍 Son iguales?', userId === vendedorIdNum);
 
     if (userId !== vendedorIdNum) {
         showModalMessage('Error', 'No puedes eliminar una subasta que no te pertenece', 'error');
         return;
     }
 
-    // ✅ VERIFICAR QUE ESTÉ EN ESTADO PERMITIDO
     if (subasta.estadoPrincipal !== 'PENDIENTE' && subasta.estadoPrincipal !== 'RECHAZADA') {
         showModalMessage('Error', 
             `Solo puedes eliminar subastas en estado "Pendiente" o "Rechazada". 
@@ -1066,12 +1086,9 @@ const handleEliminarClick = (subasta) => {
         return;
     }
 
-    // ✅ MOSTRAR MODAL DE CONFIRMACIÓN
-    console.log('✅ Abriendo modal de confirmación para subasta:', subasta.id);
-    setSubastaAEliminar(subasta.id);
+    setSubastaAEliminar(subasta.id || subastaId);
     setShowDeleteModal(true);
 };
-
 // ========== CONFIRMAR ELIMINACIÓN ==========
 const handleEliminarConfirm = async () => {
     if (!subastaAEliminar) return;
