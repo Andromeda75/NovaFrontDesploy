@@ -51,6 +51,7 @@ import PublicRoute from './components/PublicRoute.jsx';
 import TicketsSuccess from './pages/tickets/TicketsSuccess.jsx';
 import TicketsCancel from './pages/tickets/TicketsCancel.jsx';
 import SearchResults from './pages/search/SearchResults';
+import PagoExitoso from './pages/subastas/PagoExitoso.jsx';
 
 import NoPermission from './components/NoPermission.jsx';
 
@@ -170,6 +171,11 @@ function App() {
                     } />
                     <Route path="/tickets/cancel" element={
                         <MainLayout><TicketsCancel /></MainLayout>
+                    } />
+                    <Route path="/subasta/:id/pago-exitoso" element={
+                        <ProtectedRoute>
+                            <MainLayout><PagoExitoso /></MainLayout>
+                        </ProtectedRoute>
                     } />
                     
                     {/* Peticiones (interacción) */}

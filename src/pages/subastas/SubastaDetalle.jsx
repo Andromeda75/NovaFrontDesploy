@@ -6,6 +6,7 @@ import { subastaService } from '../../services/subastaService';
 import { pujaService } from '../../services/pujaService';
 import { authService } from '../../services/authService';
 import { favoriteService } from "../../services/favoriteService";
+import { ticketsService } from '../../services/ticketsService';
 import MensajeModal from '../../components/modals/MensajeModal.jsx';
 import { useModal } from '../../components/modals/useModal.jsx';
 
@@ -83,9 +84,7 @@ const SubastaDetalle = () => {
     const [successMessage, setSuccessMessage] = useState('');
     const timerRef = useRef(null);
 
-    const [mostrarValidacionPago, setMostrarValidacionPago] = useState(false);
-    const [metodosPago, setMetodosPago] = useState([]);
-    const [metodoPagoSeleccionado, setMetodoPagoSeleccionado] = useState(null);
+    // Estados para pago con Stripe
     const [procesandoPago, setProcesandoPago] = useState(false);
     const [esGanador, setEsGanador] = useState(false);
     const [pagoRealizado, setPagoRealizado] = useState(false);
@@ -97,11 +96,11 @@ const SubastaDetalle = () => {
 
     const [isFavorite, setIsFavorite] = useState(false);
 
-    // 👇 ESTADOS PARA MODALES PERSONALIZADOS
+    // Estados para modales personalizados
     const [showTicketsModal, setShowTicketsModal] = useState(false);
     const [showMontoInvalidoModal, setShowMontoInvalidoModal] = useState(false);
 
-    // 👇 ESTADOS PARA EL MODAL DE ARTÍCULOS DE MEGASUBASTA
+    // Estados para el modal de artículos de MegaSubasta
     const [showArticuloModal, setShowArticuloModal] = useState(false);
     const [articuloSeleccionado, setArticuloSeleccionado] = useState(null);
     const [indiceArticuloModal, setIndiceArticuloModal] = useState(0);
@@ -113,39 +112,28 @@ const SubastaDetalle = () => {
             const response = await api.get(`/subastas/${id}/ganador`);
             setEsGanador(response.data.esGanador);
             setPagoRealizado(response.data.pago_realizado);
-            
-            if (response.data.esGanador && !response.data.pago_realizado) {
-                const metodos = await api.get(`/subastas/${id}/metodos-pago`);
-                setMetodosPago(metodos.data);
-                if (metodos.data.length > 0) {
-                    setMetodoPagoSeleccionado(metodos.data[0].id);
-                }
-            }
         } catch (err) {
             console.error('Error verificando ganador:', err);
         }
     };
 
-    const handleValidarPago = async () => {
-        if (!metodoPagoSeleccionado) {
-            showModalMessage('Atención', 'Por favor, selecciona un método de pago', 'warning');
-            return;
-        }
-        
+    // 👇 FUNCIÓN PARA PAGAR CON STRIPE
+    const handlePagarConStripe = async () => {
         setProcesandoPago(true);
+        
         try {
-            const response = await api.post(`/subastas/${id}/validar-pago`, {
-                metodo_pago_id: metodoPagoSeleccionado
-            });
+            const response = await ticketsService.crearSesionPagoSubasta(id, subasta.puja_actual_mxn);
             
-            showModalMessage('¡Pago exitoso!', `Pago realizado exitosamente. Comisión aplicada: $${response.data.comision.toFixed(2)} MXN`, 'success');
-            setPagoRealizado(true);
-            setMostrarValidacionPago(false);
-            cargarDatos();
-        } catch (err) {
-            console.error('Error al validar pago:', err);
-            showModalMessage('Error', err.response?.data?.message || 'Error al procesar el pago', 'error');
-        } finally {
+            if (response.url) {
+                localStorage.setItem('stripe_session_id', response.session_id || '');
+                window.location.href = response.url;
+            } else {
+                showModalMessage('Error', 'No se pudo iniciar el proceso de pago', 'error');
+                setProcesandoPago(false);
+            }
+        } catch (error) {
+            console.error('Error al crear sesión de pago:', error);
+            showModalMessage('Error', error.response?.data?.message || 'Error al procesar el pago', 'error');
             setProcesandoPago(false);
         }
     };
@@ -174,7 +162,6 @@ const SubastaDetalle = () => {
         
             subastaData.media = media;
   
-            
             if (!subastaData.estadoPrincipal) {
                 if (subastaData.estado_nombre === 'Activa') {
                     subastaData.estadoPrincipal = 'ACTIVA';
@@ -225,7 +212,6 @@ const SubastaDetalle = () => {
                 });
                 setIsFavorite(false);
                 showModalMessage('Favoritos', 'Eliminado de favoritos', 'success');
-                console.log("Eliminado de favoritos");
             } else {
                 await favoriteService.postFavorite({
                     tipo: "subasta",
@@ -233,7 +219,6 @@ const SubastaDetalle = () => {
                 });
                 setIsFavorite(true);
                 showModalMessage('Favoritos', 'Agregado a favoritos', 'success');
-                console.log("Agregado a favoritos");
             }
         } catch (error) {
             console.error(error);
@@ -272,7 +257,6 @@ const SubastaDetalle = () => {
         setShowModalImagen(true);
     };
 
-    // ========== FUNCIONES PARA EL MODAL DE ARTÍCULOS DE MEGASUBASTA ==========
     const anteriorArticuloModal = () => {
         if (!subasta?.articulos || subasta.articulos.length === 0) return;
         const total = subasta.articulos.length;
@@ -301,7 +285,6 @@ const SubastaDetalle = () => {
         setShowArticuloModal(true);
     };
 
-    // ========== RENDER DE ARTÍCULOS DE MEGASUBASTA (SOLO TARJETAS, SIN TÍTULO) ==========
     const renderArticulosMegaSubasta = () => {
         if (!subasta?.esMegaSubasta || !subasta?.articulos || subasta.articulos.length === 0) return null;
 
@@ -316,7 +299,6 @@ const SubastaDetalle = () => {
                     const imagenPrincipal = imagenes[0] || null;
                     const tieneVideo = articulo.video_url ? true : false;
                     
-                    // Determinar si esta tarjeta está seleccionada
                     const isSelected = indiceArticuloModal === index;
 
                     return (
@@ -351,7 +333,6 @@ const SubastaDetalle = () => {
                             }}
                         >
                             <div className="d-flex flex-row">
-                                {/* Imagen - 30% del ancho */}
                                 <div 
                                     className="flex-shrink-0 position-relative"
                                     style={{ 
@@ -377,7 +358,6 @@ const SubastaDetalle = () => {
                                         </div>
                                     )}
                                     
-                                    {/* Overlay sutil sobre la imagen cuando está seleccionada */}
                                     {isSelected && (
                                         <div 
                                             className="position-absolute top-0 start-0 w-100 h-100"
@@ -388,7 +368,6 @@ const SubastaDetalle = () => {
                                     )}
                                 </div>
 
-                                {/* Círculo con flecha en la esquina inferior derecha - GRIS SUTIL ESTÁTICO */}
                                 <div 
                                     className="position-absolute bottom-0 end-0 m-2 d-flex align-items-center justify-content-center"
                                     style={{
@@ -410,7 +389,6 @@ const SubastaDetalle = () => {
                                     ></i>
                                 </div>
 
-                                {/* Información - 70% del ancho */}
                                 <div className="card-body p-3 d-flex flex-column justify-content-between flex-grow-1" style={{ minWidth: 0 }}>
                                     <div>
                                         <div className="d-flex justify-content-between align-items-start">
@@ -515,7 +493,6 @@ const SubastaDetalle = () => {
         cargarDatos();
     };
 
-    // ====== BADGE DEL GANADOR O NO VENDIDA ======
     const renderGanadorBadge = () => {
         if (subasta.estadoPrincipal !== 'FINALIZADA') return null;
         
@@ -587,10 +564,8 @@ const SubastaDetalle = () => {
                 <Row className="g-4">
                     <Col lg={7}>
                         {subasta.esMegaSubasta ? (
-                            // 👇 MEGA SUBASTA - Solo tarjetas de artículos (sin título)
                             renderArticulosMegaSubasta()
                         ) : (
-                            // 👇 SUBASTA NORMAL - Imagen principal y miniaturas
                             <>
                                 <div className="position-relative">
                                     <div 
@@ -777,7 +752,6 @@ const SubastaDetalle = () => {
                                 }
                             </div>
 
-                            {/* 👇 TÍTULO MEGASUBASTA Y CONTADOR DE ARTÍCULOS EN LA TARJETA LATERAL */}
                             {subasta.esMegaSubasta && (
                                 <>
                                     <h2 className="fw-bold color-1 mb-1" style={{ fontSize: '28px' }}>
@@ -867,15 +841,38 @@ const SubastaDetalle = () => {
                                 </div>
                             )}
 
+                            {/* 👇 BOTÓN DE PAGO CON STRIPE PARA EL GANADOR */}
                             {esGanador && !pagoRealizado && subasta.estadoPrincipal === 'FINALIZADA' && (
                                 <div className="mt-4">
                                     <Button 
                                         className="btn-success w-100 py-2 fw-bold"
-                                        onClick={() => setMostrarValidacionPago(true)}
+                                        onClick={handlePagarConStripe}
+                                        disabled={procesandoPago}
                                     >
-                                        <i className="bi bi-credit-card me-2"></i>
-                                        VALIDAR PAGO Y CONFIRMAR COMPRA
+                                        {procesandoPago ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm me-2"></span>
+                                                Procesando...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="bi bi-credit-card me-2"></i>
+                                                PAGAR CON STRIPE
+                                            </>
+                                        )}
                                     </Button>
+                                    <small className="text-muted d-block mt-2 text-center">
+                                        <i className="bi bi-lock me-1"></i>
+                                        Pago seguro a través de Stripe
+                                    </small>
+                                </div>
+                            )}
+
+                            {/* ✅ Ya pagado */}
+                            {esGanador && pagoRealizado && subasta.estadoPrincipal === 'FINALIZADA' && (
+                                <div className="alert alert-success text-center">
+                                    <i className="bi bi-check-circle-fill me-2"></i>
+                                    ¡Pago completado! El vendedor se pondrá en contacto contigo.
                                 </div>
                             )}
 
@@ -993,7 +990,7 @@ const SubastaDetalle = () => {
                 </div>
             </Modal>
 
-            {/* 👇 MODAL DE ARTÍCULO DE MEGASUBASTA CON VIDEO Y MINIATURAS MEJORADO */}
+            {/* Modal de artículo de MegaSubasta */}
             <Modal
                 show={showArticuloModal}
                 onHide={() => {
@@ -1010,7 +1007,6 @@ const SubastaDetalle = () => {
             >
                 {articuloSeleccionado && (
                     <div className="position-relative" style={{ backgroundColor: '#ffffff' }}>
-                        {/* Botón cerrar */}
                         <button
                             className="btn btn-light rounded-circle position-absolute top-0 end-0 m-3 shadow d-flex align-items-center justify-content-center"
                             style={{ width: '36px', height: '36px', zIndex: 10, border: 'none' }}
@@ -1026,7 +1022,6 @@ const SubastaDetalle = () => {
                         </button>
                         <div className="p-4 p-lg-5">
                             <div className="row g-4">
-                                {/* COLUMNA IZQUIERDA - Carrusel de imágenes con video */}
                                 <div className="col-lg-7">
                                     <div className="position-relative">
                                         <div 
@@ -1090,7 +1085,6 @@ const SubastaDetalle = () => {
                                             )}
                                         </div>
 
-                                        {/* Contador de imágenes/video */}
                                         {(() => {
                                             const imagenes = [
                                                 articuloSeleccionado.foto1_url,
@@ -1111,62 +1105,46 @@ const SubastaDetalle = () => {
                                             return null;
                                         })()}
 
-                                        {/* Flechas de navegación */}
-                                        {(() => {
-                                            const imagenes = [
-                                                articuloSeleccionado.foto1_url,
-                                                articuloSeleccionado.foto2_url,
-                                                articuloSeleccionado.foto3_url
-                                            ].filter(Boolean);
-                                            const totalImagenes = imagenes.length;
-                                            const tieneVideo = articuloSeleccionado.video_url ? true : false;
-                                            const totalItems = totalImagenes + (tieneVideo ? 1 : 0);
-                                            
-                                            if (totalItems > 1) {
-                                                return (
-                                                    <>
-                                                        <button
-                                                            className="btn btn-light rounded-circle position-absolute top-50 start-0 translate-middle-y ms-2 shadow-sm d-flex align-items-center justify-content-center"
-                                                            style={{ width: '32px', height: '32px', zIndex: 10, border: 'none' }}
-                                                            onClick={() => {
-                                                                if (mostrandoVideoArticulo) {
-                                                                    setMostrandoVideoArticulo(false);
-                                                                    setIndiceImagenArticulo(totalImagenes - 1);
-                                                                } else {
-                                                                    const nuevoIndice = indiceImagenArticulo > 0 ? indiceImagenArticulo - 1 : totalImagenes - 1;
-                                                                    setIndiceImagenArticulo(nuevoIndice);
-                                                                }
-                                                            }}
-                                                        >
-                                                            <i className="bi bi-chevron-left" style={{ fontSize: '12px' }}></i>
-                                                        </button>
-                                                        <button
-                                                            className="btn btn-light rounded-circle position-absolute top-50 end-0 translate-middle-y me-2 shadow-sm d-flex align-items-center justify-content-center"
-                                                            style={{ width: '32px', height: '32px', zIndex: 10, border: 'none' }}
-                                                            onClick={() => {
-                                                                if (mostrandoVideoArticulo) {
-                                                                    setMostrandoVideoArticulo(false);
-                                                                    setIndiceImagenArticulo(0);
-                                                                } else {
-                                                                    const nuevoIndice = indiceImagenArticulo < totalImagenes - 1 ? indiceImagenArticulo + 1 : totalImagenes - 1;
-                                                                    if (nuevoIndice === totalImagenes - 1 && tieneVideo) {
-                                                                        setMostrandoVideoArticulo(true);
-                                                                    } else {
-                                                                        setIndiceImagenArticulo(nuevoIndice);
-                                                                    }
-                                                                }
-                                                            }}
-                                                        >
-                                                            <i className="bi bi-chevron-right" style={{ fontSize: '12px' }}></i>
-                                                        </button>
-                                                    </>
-                                                );
-                                            }
-                                            return null;
-                                        })()}
+                                        {totalItems > 1 && (
+                                            <>
+                                                <button
+                                                    className="btn btn-light rounded-circle position-absolute top-50 start-0 translate-middle-y ms-2 shadow-sm d-flex align-items-center justify-content-center"
+                                                    style={{ width: '32px', height: '32px', zIndex: 10, border: 'none' }}
+                                                    onClick={() => {
+                                                        if (mostrandoVideoArticulo) {
+                                                            setMostrandoVideoArticulo(false);
+                                                            setIndiceImagenArticulo(totalImagenes - 1);
+                                                        } else {
+                                                            const nuevoIndice = indiceImagenArticulo > 0 ? indiceImagenArticulo - 1 : totalImagenes - 1;
+                                                            setIndiceImagenArticulo(nuevoIndice);
+                                                        }
+                                                    }}
+                                                >
+                                                    <i className="bi bi-chevron-left" style={{ fontSize: '12px' }}></i>
+                                                </button>
+                                                <button
+                                                    className="btn btn-light rounded-circle position-absolute top-50 end-0 translate-middle-y me-2 shadow-sm d-flex align-items-center justify-content-center"
+                                                    style={{ width: '32px', height: '32px', zIndex: 10, border: 'none' }}
+                                                    onClick={() => {
+                                                        if (mostrandoVideoArticulo) {
+                                                            setMostrandoVideoArticulo(false);
+                                                            setIndiceImagenArticulo(0);
+                                                        } else {
+                                                            const nuevoIndice = indiceImagenArticulo < totalImagenes - 1 ? indiceImagenArticulo + 1 : totalImagenes - 1;
+                                                            if (nuevoIndice === totalImagenes - 1 && tieneVideo) {
+                                                                setMostrandoVideoArticulo(true);
+                                                            } else {
+                                                                setIndiceImagenArticulo(nuevoIndice);
+                                                            }
+                                                        }
+                                                    }}
+                                                >
+                                                    <i className="bi bi-chevron-right" style={{ fontSize: '12px' }}></i>
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
 
-                                    {/* Miniaturas - imágenes + video */}
                                     <div className="d-flex gap-2 mt-2 overflow-auto pb-1" style={{ flexWrap: 'nowrap' }}>
                                         {(() => {
                                             const imagenes = [
@@ -1223,28 +1201,23 @@ const SubastaDetalle = () => {
                                     </div>
                                 </div>
 
-                                {/* COLUMNA DERECHA - Información del artículo */}
                                 <div className="col-lg-5">
-                                    {/* Badge de artículo */}
                                     <div className="d-flex justify-content-between align-items-start mb-2">
                                         <span className="badge bg-secondary bg-opacity-10 text-secondary">
                                             Artículo {indiceArticuloModal + 1} de {subasta?.articulos?.length || 0}
                                         </span>
                                     </div>
 
-                                    {/* Título */}
                                     <h5 className="fw-bold color-1 mb-2" style={{ fontSize: '25px' }}>
                                         {articuloSeleccionado.titulo || 'Sin título'}
                                     </h5>
                                     
-                                    {/* Categoría */}
                                     <div className="mb-3">
                                         <h6 style={{ fontSize: '14px', color: '#9A5F25' }}>
                                             {articuloSeleccionado.categoria || 'Sin categoría'}
                                         </h6>
                                     </div>
 
-                                    {/* Descripción */}
                                     <div className="mb-3">
                                         <h6 className="fw-bold color-1 mb-1" style={{ fontSize: '15px' }}>
                                             Descripción
@@ -1254,7 +1227,6 @@ const SubastaDetalle = () => {
                                         </p>
                                     </div>
 
-                                    {/* Información de la subasta */}
                                     <div className="bg-light p-3 rounded-4 mt-3">
                                         <div className="d-flex justify-content-between">
                                             <div>
@@ -1266,7 +1238,6 @@ const SubastaDetalle = () => {
                                         </div>
                                     </div>
 
-                                    {/* PDF - Solo visible para admin */}
                                     {articuloSeleccionado.documento_url && (
                                         <div className="mt-3">
                                             <a
@@ -1350,6 +1321,7 @@ const SubastaDetalle = () => {
                 </Modal.Body>
             </Modal>
 
+            {/* MODAL DE ÉXITO EN PUJA */}
             <Modal 
                 show={showSuccessModal} 
                 onHide={handleCerrarModal}
@@ -1383,94 +1355,6 @@ const SubastaDetalle = () => {
                             Entendido
                         </Button>
                     </div>
-                </div>
-            </Modal>
-
-            <Modal 
-                show={mostrarValidacionPago} 
-                onHide={() => setMostrarValidacionPago(false)}
-                centered
-            >
-                <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '25px', overflow: 'hidden' }}>
-                    <div className="p-4 text-center text-white" style={{ background: 'linear-gradient(to right, #2a140a, #8d4925)' }}>
-                        <i className="bi bi-shield-check fs-1 mb-2"></i>
-                        <h3 className="fw-bold mb-0">Validar Pago</h3>
-                        <p className="mb-0 small opacity-75">Monto a pagar: {formatearPrecio(subasta.puja_actual_mxn)}</p>
-                    </div>
-                    <Modal.Body className="p-4">
-                        <div className="mb-4">
-                            <label className="fw-bold mb-2">Selecciona un método de pago</label>
-                            {metodosPago.length > 0 ? (
-                                metodosPago.map(metodo => (
-                                    <div 
-                                        key={metodo.id}
-                                        className={`border rounded-4 p-3 mb-2 d-flex align-items-center cursor-pointer ${metodoPagoSeleccionado === metodo.id ? 'border-success bg-success bg-opacity-10' : ''}`}
-                                        onClick={() => setMetodoPagoSeleccionado(metodo.id)}
-                                        style={{ cursor: 'pointer' }}
-                                    >
-                                        <div className="bg-white border rounded p-2 me-3">
-                                            <i className="bi bi-credit-card fs-3"></i>
-                                        </div>
-                                        <div className="flex-grow-1">
-                                            <p className="m-0 fw-bold">{metodo.nombre_titular}</p>
-                                            <small className="text-muted">{metodo.numero_tarjeta_enmascarado} - Vence: {new Date(metodo.fecha_expiracion).toLocaleDateString()}</small>
-                                        </div>
-                                        <div className="form-check">
-                                            <input 
-                                                type="radio" 
-                                                className="form-check-input" 
-                                                checked={metodoPagoSeleccionado === metodo.id}
-                                                onChange={() => setMetodoPagoSeleccionado(metodo.id)}
-                                            />
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="alert alert-warning">
-                                    No tienes métodos de pago registrados. 
-                                    <a href="/perfil/configuracion">Agrega uno aquí</a>
-                                </div>
-                            )}
-                        </div>
-                        <div className="bg-light p-3 rounded-4 mb-4">
-                            <div className="d-flex justify-content-between mb-2">
-                                <span>Monto de la subasta:</span>
-                                <span className="fw-bold">{formatearPrecio(subasta.puja_actual_mxn)}</span>
-                            </div>
-                            <div className="d-flex justify-content-between mb-2 text-danger">
-                                <span>Comisión (8%):</span>
-                                <span className="fw-bold">-{formatearPrecio(subasta.puja_actual_mxn * 0.08)}</span>
-                            </div>
-                            <hr />
-                            <div className="d-flex justify-content-between">
-                                <span className="fw-bold">Total a pagar:</span>
-                                <span className="fw-bold fs-5">{formatearPrecio(subasta.puja_actual_mxn)}</span>
-                            </div>
-                        </div>
-                        <div className="d-flex gap-3">
-                            <Button 
-                                variant="outline-secondary" 
-                                className="flex-grow-1 rounded-pill py-2"
-                                onClick={() => setMostrarValidacionPago(false)}
-                            >
-                                Cancelar
-                            </Button>
-                            <Button 
-                                className="btn-2 flex-grow-1 rounded-pill py-2"
-                                onClick={handleValidarPago}
-                                disabled={procesandoPago || metodosPago.length === 0}
-                            >
-                                {procesandoPago ? (
-                                    <>
-                                        <span className="spinner-border spinner-border-sm me-2"></span>
-                                        Procesando...
-                                    </>
-                                ) : (
-                                    'Confirmar Pago'
-                                )}
-                            </Button>
-                        </div>
-                    </Modal.Body>
                 </div>
             </Modal>
 
