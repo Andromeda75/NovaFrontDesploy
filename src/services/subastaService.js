@@ -55,9 +55,7 @@ export const subastaService = {
         }
     },
 
-
     // ========== NUEVOS MÉTODOS PARA APROBACIÓN/RECHAZO ==========
-
     aprobarSubasta: async (id) => {
         const response = await api.put(`/subastas/${id}/aprobar`);
         return response.data;

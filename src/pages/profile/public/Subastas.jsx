@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { authService } from '../../../services/authService';
 import { Modal, Card, Button } from 'react-bootstrap';
 import SubastaCard from '../../../components/cards/subastas/SubastaCardR.jsx';
 import { subastaService } from '../../../services/subastaService';
@@ -1015,15 +1016,16 @@ const MisSubastas = () => {
     }
   };
 
+  // ========== ELIMINAR SUBASTA ==========
   const handleEliminarClick = (subasta) => {
-      //  VERIFICAR QUE EL USUARIO SEA EL PROPIETARIO
+      // ✅ VERIFICAR QUE EL USUARIO SEA EL PROPIETARIO
       const user = authService.getCurrentUser();
-      if (user?.id !== subasta.vendedor_id) {
+      if (!user || user?.id !== subasta.vendedor_id) {
           showModalMessage('Error', 'No puedes eliminar una subasta que no te pertenece', 'error');
           return;
       }
 
-      //  VERIFICAR QUE ESTÉ EN ESTADO PERMITIDO
+      // ✅ VERIFICAR QUE ESTÉ EN ESTADO PERMITIDO
       if (subasta.estadoPrincipal !== 'PENDIENTE' && subasta.estadoPrincipal !== 'RECHAZADA') {
           showModalMessage('Error', 
               `Solo puedes eliminar subastas en estado "Pendiente" o "Rechazada". 
@@ -1033,31 +1035,32 @@ const MisSubastas = () => {
           return;
       }
 
-      //  MOSTRAR MODAL DE CONFIRMACIÓN
+      // ✅ MOSTRAR MODAL DE CONFIRMACIÓN
       setSubastaAEliminar(subasta.id);
       setShowDeleteModal(true);
   };
 
+  // ========== CONFIRMAR ELIMINACIÓN ==========
   const handleEliminarConfirm = async () => {
       if (!subastaAEliminar) return;
 
       try {
           const response = await subastaService.eliminarSubasta(subastaAEliminar);
           
-          //  Mostrar mensaje de éxito
+          // ✅ Mostrar mensaje de éxito
           showModalMessage('¡Éxito!', response.message || 'Subasta eliminada exitosamente', 'success');
           
-          //  Recargar la lista
+          // ✅ Recargar la lista
           await cargarSubastas();
           
-          //  Cerrar modal
+          // ✅ Cerrar modal
           setShowDeleteModal(false);
           setSubastaAEliminar(null);
           
       } catch (error) {
           console.error('Error eliminando subasta:', error);
           
-          //  Manejar errores específicos
+          // ✅ Manejar errores específicos
           let errorMessage = 'Error al eliminar la subasta';
           
           if (error.response?.status === 403) {
