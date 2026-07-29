@@ -572,6 +572,7 @@ useEffect(() => {
       descripcion: '',
       precio: '',
       duracion: '',
+      duracionPersonalizada: 0,
       pujaMinima: null,
       imagenes: [],
       video: null,
@@ -1156,20 +1157,34 @@ const handleEliminarConfirm = async () => {
           _documento_url: art._documento_url || null
         }));
 
+        // ✅ CALCULAR DURACIÓN CORRECTAMENTE
+        let duracionFinal = 72;
+        let duracionPersonalizadaEnviar = 0;
+        
+        if (formData.duracion === 'personalizada' && formData.duracionPersonalizada > 0) {
+          duracionFinal = Math.ceil(formData.duracionPersonalizada / 60);
+          duracionPersonalizadaEnviar = formData.duracionPersonalizada;
+        } else if (formData.duracion) {
+          const horasMap = {
+            '24 Horas': 24,
+            '48 Horas': 48,
+            '72 Horas': 72,
+            '96 Horas': 96,
+            '120 Horas': 120,
+            '168 Horas': 168,
+            '336 Horas': 336
+          };
+          duracionFinal = horasMap[formData.duracion] || 72;
+        }
+
         dataToSend = {
           titulo: `MegaSubasta: ${formData.articulos[0]?.titulo || 'Sin título'}${formData.articulos.length > 1 ? ` y ${formData.articulos.length - 1} más` : ''}`,
           categoria_id: categoriaId,
           descripcion: formData.articulos.map((a, i) => `${i + 1}. ${a.titulo}: ${a.descripcion}`).join('\n\n'),
           precio_inicial: parseFloat(formData.precio) || 0,
           puja_minima: formData.pujaMinima || 0,
-          duracion_horas: formData.duracion === '24 Horas' ? 24 : 
-                        formData.duracion === '48 Horas' ? 48 : 
-                        formData.duracion === '72 Horas' ? 72 : 
-                        formData.duracion === '96 Horas' ? 96 : 
-                        formData.duracion === '120 Horas' ? 120 :
-                        formData.duracion === '168 Horas' ? 168 :
-                        formData.duracion === '336 Horas' ? 336 :
-                        formData.duracion === 'personalizada' ? Math.ceil(formData.duracionPersonalizada / 60) : 72,
+          duracion_horas: duracionFinal,
+          duracionPersonalizada: duracionPersonalizadaEnviar, // 👈 ENVIAR ESTO
           imagenes: [null, null, null],
           video: null,
           documento: formData.documento || null,
@@ -1184,19 +1199,34 @@ const handleEliminarConfirm = async () => {
           return;
         }
 
+        // ✅ CALCULAR DURACIÓN CORRECTAMENTE
+        let duracionFinal = 72;
+        let duracionPersonalizadaEnviar = 0;
+        
+        if (formData.duracion === 'personalizada' && formData.duracionPersonalizada > 0) {
+          duracionFinal = Math.ceil(formData.duracionPersonalizada / 60);
+          duracionPersonalizadaEnviar = formData.duracionPersonalizada;
+        } else if (formData.duracion) {
+          const horasMap = {
+            '24 Horas': 24,
+            '48 Horas': 48,
+            '72 Horas': 72,
+            '96 Horas': 96,
+            '120 Horas': 120,
+            '168 Horas': 168,
+            '336 Horas': 336
+          };
+          duracionFinal = horasMap[formData.duracion] || 72;
+        }
+
         dataToSend = {
           titulo: formData.titulo,
           categoria_id: categoriaId,
           descripcion: formData.descripcion,
           precio_inicial: parseFloat(formData.precio) || 0,
           puja_minima: formData.pujaMinima || 0,
-          duracion_horas: formData.duracion === '24 Horas' ? 24 : 
-                        formData.duracion === '48 Horas' ? 48 : 
-                        formData.duracion === '72 Horas' ? 72 : 
-                        formData.duracion === '96 Horas' ? 96 : 
-                        formData.duracion === '120 Horas' ? 120 :
-                        formData.duracion === '168 Horas' ? 168 :
-                        formData.duracion === '336 Horas' ? 336 : 72,
+          duracion_horas: duracionFinal,
+          duracionPersonalizada: duracionPersonalizadaEnviar, // 👈 ENVIAR ESTO
           imagenes: formData.imagenes,
           video: formData.video,
           documento: formData.documento,
@@ -1306,6 +1336,7 @@ const handleEliminarConfirm = async () => {
     return true;
   };
 
+  // ========== CREAR SUBASTA (CORREGIDO) ==========
   const handleCrearSubasta = async () => {
     //  PRIMERO VALIDAR EL FORMULARIO
     if (!validarFormulario()) {
@@ -1323,6 +1354,26 @@ const handleEliminarConfirm = async () => {
         return;
       }
 
+      // ✅ CALCULAR DURACIÓN CORRECTAMENTE
+      let duracionFinal = 72;
+      let duracionPersonalizadaEnviar = 0;
+      
+      if (formData.duracion === 'personalizada' && formData.duracionPersonalizada > 0) {
+        duracionFinal = Math.ceil(formData.duracionPersonalizada / 60);
+        duracionPersonalizadaEnviar = formData.duracionPersonalizada;
+      } else if (formData.duracion) {
+        const horasMap = {
+          '24 Horas': 24,
+          '48 Horas': 48,
+          '72 Horas': 72,
+          '96 Horas': 96,
+          '120 Horas': 120,
+          '168 Horas': 168,
+          '336 Horas': 336
+        };
+        duracionFinal = horasMap[formData.duracion] || 72;
+      }
+
       dataToSend = {
         esMegaSubasta: true,
         categoriaMega: formData.categoriaMega,
@@ -1337,15 +1388,8 @@ const handleEliminarConfirm = async () => {
         })),
         precio_inicial: parseFloat(formData.precio) || 0,
         puja_minima: formData.pujaMinima || 0,
-        duracion_horas: 
-        formData.duracion === '24 Horas' ? 24 :
-        formData.duracion === '48 Horas' ? 48 :
-        formData.duracion === '72 Horas' ? 72 :
-        formData.duracion === '96 Horas' ? 96 :
-        formData.duracion === '120 Horas' ? 120 :
-        formData.duracion === '168 Horas' ? 168 :
-        formData.duracion === '336 Horas' ? 336 :
-        formData.duracion === 'personalizada' ? Math.ceil(formData.duracionPersonalizada / 60) : 0,
+        duracion_horas: duracionFinal,
+        duracionPersonalizada: duracionPersonalizadaEnviar, // 👈 ENVIAR ESTO
         documento: formData.documento || null
       };
     } else {
@@ -1355,20 +1399,34 @@ const handleEliminarConfirm = async () => {
         return;
       }
 
+      // ✅ CALCULAR DURACIÓN CORRECTAMENTE
+      let duracionFinal = 72;
+      let duracionPersonalizadaEnviar = 0;
+      
+      if (formData.duracion === 'personalizada' && formData.duracionPersonalizada > 0) {
+        duracionFinal = Math.ceil(formData.duracionPersonalizada / 60);
+        duracionPersonalizadaEnviar = formData.duracionPersonalizada;
+      } else if (formData.duracion) {
+        const horasMap = {
+          '24 Horas': 24,
+          '48 Horas': 48,
+          '72 Horas': 72,
+          '96 Horas': 96,
+          '120 Horas': 120,
+          '168 Horas': 168,
+          '336 Horas': 336
+        };
+        duracionFinal = horasMap[formData.duracion] || 72;
+      }
+
       dataToSend = {
         titulo: formData.titulo.trim(),
         categoria_id: categoriaId,
         descripcion: formData.descripcion.trim(),
         precio_inicial: parseFloat(formData.precio) || 0,
         puja_minima: formData.pujaMinima || 0,
-        duracion_horas: 
-          formData.duracion === '24 Horas' ? 24 :
-          formData.duracion === '48 Horas' ? 48 :
-          formData.duracion === '72 Horas' ? 72 :
-          formData.duracion === '96 Horas' ? 96 :
-          formData.duracion === '120 Horas' ? 120 :
-          formData.duracion === '168 Horas' ? 168 :
-          formData.duracion === '336 Horas' ? 336 : 72,
+        duracion_horas: duracionFinal,
+        duracionPersonalizada: duracionPersonalizadaEnviar, // 👈 ENVIAR ESTO
         imagenes: formData.imagenes,
         video: formData.video || null,
         documento: formData.documento || null,
@@ -1376,8 +1434,10 @@ const handleEliminarConfirm = async () => {
       };
     }
 
+    console.log('📦 Enviando al backend:', dataToSend);
+
     try {
-      await subastaService.crearSubasta(dataToSend);
+      const response = await subastaService.crearSubasta(dataToSend);
       
       if (formData.esMegaSubasta) {
         showModalMessage('¡Éxito!', 'MegaSubasta creada exitosamente -30 tickets.', 'success');
@@ -1404,7 +1464,7 @@ const handleEliminarConfirm = async () => {
     return null;
   };
 
-  // ========== RENDER PASO 1 (MODIFICADO - PORTADA OBLIGATORIA) ==========
+  // ========== RENDER PASO 1 ==========
   const renderPaso1 = () => {
     if (formData.esMegaSubasta) {
       return (
@@ -1665,7 +1725,7 @@ const handleEliminarConfirm = async () => {
     }
   };
 
-  // ========== RENDER PASO 2 (MODIFICADO - VALIDACIÓN VISUAL DE IMÁGENES) ==========
+  // ========== RENDER PASO 2 ==========
   const renderPaso2 = () => {
     if (formData.esMegaSubasta) {
       return (
@@ -2034,7 +2094,7 @@ const handleEliminarConfirm = async () => {
     }
   };
 
-  // ========== RENDER PASO 3 (MODIFICADO - OCULTAR TICKETS EN EDICIÓN) ==========
+  // ========== RENDER PASO 3 ==========
   const renderPaso3 = () => {
     return (
       <div className="animate__animated animate__fadeIn text-start">
