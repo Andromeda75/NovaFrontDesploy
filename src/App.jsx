@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { authService } from './services/authService';
 import TerminosModal from './components/modals/TerminosModal';
+
 import Login from './pages/auth/Login.jsx';
 import Register from './pages/auth/Register.jsx';
 
@@ -208,6 +209,7 @@ function App() {
                             <MainLayout><ProfilePublicCatalogo /></MainLayout>
                         </ProtectedRoute>
                     } />
+
                     {/* ========== RUTA DE ACCESO DENEGADO ========== */}
                     <Route path="/sin-permiso" element={
                         <MainLayout>
