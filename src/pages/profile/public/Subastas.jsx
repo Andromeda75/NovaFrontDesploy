@@ -70,10 +70,15 @@ const MisSubastas = () => {
   const [indiceArticuloModal, setIndiceArticuloModal] = useState(0);
   const [indiceImagenArticulo, setIndiceImagenArticulo] = useState(0);
 
-  useEffect(() => {
+useEffect(() => {
+    const user = authService.getCurrentUser();
+    console.log('👤 Usuario actual en Subastas.jsx:', user);
+    console.log('👤 ID del usuario:', user?.id);
+    console.log('👤 Tipo de ID:', typeof user?.id);
+    
     cargarSubastas();
     cargarTicketsUsuario();
-  }, []);
+}, []);
 
   const cargarTicketsUsuario = async () => {};
 
@@ -1017,63 +1022,83 @@ const MisSubastas = () => {
   };
 
   // ========== ELIMINAR SUBASTA ==========
-  const handleEliminarClick = (subasta) => {
-      // ✅ VERIFICAR QUE EL USUARIO SEA EL PROPIETARIO
-      const user = authService.getCurrentUser();
-      if (!user || user?.id !== subasta.vendedor_id) {
-          showModalMessage('Error', 'No puedes eliminar una subasta que no te pertenece', 'error');
-          return;
-      }
+// ========== ELIMINAR SUBASTA ==========
+const handleEliminarClick = (subasta) => {
+    // ✅ OBTENER USUARIO ACTUAL
+    const user = authService.getCurrentUser();
+    console.log('🔍 Usuario actual:', user);
+    console.log('🔍 ID usuario:', user?.id, 'Tipo:', typeof user?.id);
+    console.log('🔍 Vendedor ID:', subasta.vendedor_id, 'Tipo:', typeof subasta.vendedor_id);
+    
+    if (!user) {
+        showModalMessage('Error', 'No has iniciado sesión', 'error');
+        return;
+    }
 
-      // ✅ VERIFICAR QUE ESTÉ EN ESTADO PERMITIDO
-      if (subasta.estadoPrincipal !== 'PENDIENTE' && subasta.estadoPrincipal !== 'RECHAZADA') {
-          showModalMessage('Error', 
-              `Solo puedes eliminar subastas en estado "Pendiente" o "Rechazada". 
-              Estado actual: "${subasta.estadoPrincipal}"`, 
-              'error'
-          );
-          return;
-      }
+    // ✅ CONVERTIR AMBOS A NÚMERO PARA COMPARACIÓN SEGURA
+    const userId = Number(user.id);
+    const vendedorId = Number(subasta.vendedor_id);
+    
+    console.log('🔍 userId (número):', userId);
+    console.log('🔍 vendedorId (número):', vendedorId);
+    console.log('🔍 Son iguales?', userId === vendedorId);
 
-      // ✅ MOSTRAR MODAL DE CONFIRMACIÓN
-      setSubastaAEliminar(subasta.id);
-      setShowDeleteModal(true);
-  };
+    if (userId !== vendedorId) {
+        showModalMessage('Error', 'No puedes eliminar una subasta que no te pertenece', 'error');
+        return;
+    }
 
-  // ========== CONFIRMAR ELIMINACIÓN ==========
-  const handleEliminarConfirm = async () => {
-      if (!subastaAEliminar) return;
+    // ✅ VERIFICAR QUE ESTÉ EN ESTADO PERMITIDO
+    if (subasta.estadoPrincipal !== 'PENDIENTE' && subasta.estadoPrincipal !== 'RECHAZADA') {
+        showModalMessage('Error', 
+            `Solo puedes eliminar subastas en estado "Pendiente" o "Rechazada". 
+            Estado actual: "${subasta.estadoPrincipal}"`, 
+            'error'
+        );
+        return;
+    }
 
-      try {
-          const response = await subastaService.eliminarSubasta(subastaAEliminar);
-          
-          // ✅ Mostrar mensaje de éxito
-          showModalMessage('¡Éxito!', response.message || 'Subasta eliminada exitosamente', 'success');
-          
-          // ✅ Recargar la lista
-          await cargarSubastas();
-          
-          // ✅ Cerrar modal
-          setShowDeleteModal(false);
-          setSubastaAEliminar(null);
-          
-      } catch (error) {
-          console.error('Error eliminando subasta:', error);
-          
-          // ✅ Manejar errores específicos
-          let errorMessage = 'Error al eliminar la subasta';
-          
-          if (error.response?.status === 403) {
-              errorMessage = error.response?.data?.message || 'No tienes permisos para eliminar esta subasta';
-          } else if (error.response?.status === 404) {
-              errorMessage = 'La subasta ya no existe';
-          } else if (error.response?.data?.message) {
-              errorMessage = error.response.data.message;
-          }
-          
-          showModalMessage('Error', errorMessage, 'error');
-      }
-  };
+    // ✅ MOSTRAR MODAL DE CONFIRMACIÓN
+    console.log('✅ Abriendo modal de confirmación para subasta:', subasta.id);
+    setSubastaAEliminar(subasta.id);
+    setShowDeleteModal(true);
+};
+
+// ========== CONFIRMAR ELIMINACIÓN ==========
+const handleEliminarConfirm = async () => {
+    if (!subastaAEliminar) return;
+
+    try {
+        console.log('✅ Confirmando eliminación de subasta:', subastaAEliminar);
+        const response = await subastaService.eliminarSubasta(subastaAEliminar);
+        
+        // ✅ Mostrar mensaje de éxito
+        showModalMessage('¡Éxito!', response.message || 'Subasta eliminada exitosamente', 'success');
+        
+        // ✅ Recargar la lista
+        await cargarSubastas();
+        
+        // ✅ Cerrar modal
+        setShowDeleteModal(false);
+        setSubastaAEliminar(null);
+        
+    } catch (error) {
+        console.error('Error eliminando subasta:', error);
+        
+        // ✅ Manejar errores específicos
+        let errorMessage = 'Error al eliminar la subasta';
+        
+        if (error.response?.status === 403) {
+            errorMessage = error.response?.data?.message || 'No tienes permisos para eliminar esta subasta';
+        } else if (error.response?.status === 404) {
+            errorMessage = 'La subasta ya no existe';
+        } else if (error.response?.data?.message) {
+            errorMessage = error.response.data.message;
+        }
+        
+        showModalMessage('Error', errorMessage, 'error');
+    }
+};
 
   // ========== HANDLE GUARDAR EDICION (MODIFICADO - CON VALIDACIÓN Y LOGS) ==========
   const handleGuardarEdicion = async () => {
