@@ -1026,15 +1026,12 @@ const MisSubastas = () => {
   const handleEliminarClick = async (subastaId) => {
     console.log('🔍 Eliminar - ID recibido:', subastaId);
     
-    // Si recibimos un ID, buscar la subasta completa en el estado
     let subasta = subastaId;
     if (typeof subastaId === 'number' || typeof subastaId === 'string') {
-        // Buscar en el estado de subastas
         const id = Number(subastaId);
         subasta = subastas.find(s => Number(s.id) === id);
         
         if (!subasta) {
-            // Si no está en el estado, obtener del backend
             try {
                 subasta = await subastaService.getSubastaById(id);
             } catch (error) {
@@ -1058,7 +1055,6 @@ const MisSubastas = () => {
         return;
     }
 
-    // Buscar el vendedor en varias propiedades
     const vendedorId = subasta.vendedor_id || 
                        subasta.vendedorId || 
                        subasta.vendedor?.id || 
@@ -1099,20 +1095,14 @@ const MisSubastas = () => {
         console.log('✅ Confirmando eliminación de subasta:', subastaAEliminar);
         const response = await subastaService.eliminarSubasta(subastaAEliminar);
         
-        // ✅ Mostrar mensaje de éxito
         showModalMessage('¡Éxito!', response.message || 'Subasta eliminada exitosamente', 'success');
-        
-        // ✅ Recargar la lista
         await cargarSubastas();
-        
-        // ✅ Cerrar modal
         setShowDeleteModal(false);
         setSubastaAEliminar(null);
         
     } catch (error) {
         console.error('Error eliminando subasta:', error);
         
-        // ✅ Manejar errores específicos
         let errorMessage = 'Error al eliminar la subasta';
         
         if (error.response?.status === 403) {
@@ -1130,7 +1120,6 @@ const MisSubastas = () => {
   // ========== VALIDACIÓN COMPLETA DEL FORMULARIO ==========
   const validarFormulario = () => {
     if (formData.esMegaSubasta) {
-      // VALIDACIÓN DE PORTADA OBLIGATORIA
       if (!formData.portada) {
         setValidationMessage('La MegaSubasta necesita una portada. Sube una imagen que represente tu colección.');
         setShowValidationModal(true);
@@ -1205,129 +1194,13 @@ const MisSubastas = () => {
   };
 
   // ========== CREAR SUBASTA (CORREGIDO) ==========
-// ========== CREAR SUBASTA (CORREGIDO) ==========
-const handleCrearSubasta = async () => {
-  if (!validarFormulario()) {
-    return;
-  }
-
-  setShowValidationModal(false);
-
-  let dataToSend;
-
-  if (formData.esMegaSubasta) {
-    const categoriaId = formData.categoriaId;
-    if (!categoriaId) {
-      showModalMessage('Error', 'Categoría no válida', 'error');
+  const handleCrearSubasta = async () => {
+    if (!validarFormulario()) {
       return;
     }
 
-    // ✅ CALCULAR DURACIÓN CORRECTAMENTE
-    let duracionFinal = 72;
-    let duracionPersonalizadaEnviar = 0;
+    setShowValidationModal(false);
 
-    if (formData.duracion === 'personalizada' && formData.duracionPersonalizada > 0) {
-      duracionPersonalizadaEnviar = formData.duracionPersonalizada;
-      duracionFinal = Math.ceil(formData.duracionPersonalizada / 60);
-    } else if (formData.duracion) {
-      const horasMap = {
-        '24 Horas': 24,
-        '48 Horas': 48,
-        '72 Horas': 72,
-        '96 Horas': 96,
-        '120 Horas': 120,
-        '168 Horas': 168,
-        '336 Horas': 336
-      };
-      duracionFinal = horasMap[formData.duracion] || 72;
-    }
-
-    dataToSend = {
-      esMegaSubasta: true,
-      categoriaMega: formData.categoriaMega,
-      portada: formData.portada || null,
-      articulos: formData.articulos.map(articulo => ({
-        titulo: articulo.titulo.trim(),
-        categoria_id: categoriaId,
-        descripcion: articulo.descripcion.trim(),
-        imagenes: articulo.imagenes,
-        video: articulo.video || null,
-        documento: articulo.documento || null
-      })),
-      precio_inicial: parseFloat(formData.precio) || 0,
-      puja_minima: formData.pujaMinima || 0,
-      duracion_horas: duracionFinal,
-      duracionPersonalizada: duracionPersonalizadaEnviar,
-      documento: formData.documento || null
-    };
-  } else {
-    const categoriaId = formData.categoriaId;
-    if (!categoriaId) {
-      showModalMessage('Error', 'Categoría no válida', 'error');
-      return;
-    }
-
-    // ✅ CALCULAR DURACIÓN CORRECTAMENTE
-    let duracionFinal = 72;
-    let duracionPersonalizadaEnviar = 0;
-
-    if (formData.duracion === 'personalizada' && formData.duracionPersonalizada > 0) {
-      duracionPersonalizadaEnviar = formData.duracionPersonalizada;
-      duracionFinal = Math.ceil(formData.duracionPersonalizada / 60);
-    } else if (formData.duracion) {
-      const horasMap = {
-        '24 Horas': 24,
-        '48 Horas': 48,
-        '72 Horas': 72,
-        '96 Horas': 96,
-        '120 Horas': 120,
-        '168 Horas': 168,
-        '336 Horas': 336
-      };
-      duracionFinal = horasMap[formData.duracion] || 72;
-    }
-
-    dataToSend = {
-      titulo: formData.titulo.trim(),
-      categoria_id: categoriaId,
-      descripcion: formData.descripcion.trim(),
-      precio_inicial: parseFloat(formData.precio) || 0,
-      puja_minima: formData.pujaMinima || 0,
-      duracion_horas: duracionFinal,
-      duracionPersonalizada: duracionPersonalizadaEnviar,
-      imagenes: formData.imagenes,
-      video: formData.video || null,
-      documento: formData.documento || null,
-      esMegaSubasta: false
-    };
-  }
-
-  console.log('📦 Enviando al backend:', dataToSend);
-
-  try {
-    const response = await subastaService.crearSubasta(dataToSend);
-    
-    if (formData.esMegaSubasta) {
-      showModalMessage('¡Éxito!', 'MegaSubasta creada exitosamente -30 tickets.', 'success');
-    } else {
-      showModalMessage('¡Éxito!', 'Subasta creada exitosamente', 'success');
-    }
-    
-    await cargarSubastas();
-    handleCloseModal();
-  } catch (error) {
-    console.error('Error creando subasta:', error);
-    showModalMessage('Error', error.response?.data?.message || 'Error al crear la subasta', 'error');
-  }
-};
-
-// ========== HANDLE GUARDAR EDICION (CORREGIDO) ==========
-const handleGuardarEdicion = async () => {
-  if (!validarFormulario()) {
-    return;
-  }
-
-  try {
     let dataToSend;
 
     if (formData.esMegaSubasta) {
@@ -1336,22 +1209,7 @@ const handleGuardarEdicion = async () => {
         showModalMessage('Error', 'Categoría no válida', 'error');
         return;
       }
-      
-      const articulosParaEnviar = formData.articulos.map(art => ({
-        titulo: art.titulo || '',
-        categoria_id: categoriaId,
-        descripcion: art.descripcion || '',
-        imagenes: art.imagenes || [],
-        video: art.video || null,
-        documento: art.documento || null,
-        _foto1_url: art._foto1_url || null,
-        _foto2_url: art._foto2_url || null,
-        _foto3_url: art._foto3_url || null,
-        _video_url: art._video_url || null,
-        _documento_url: art._documento_url || null
-      }));
 
-      // ✅ CALCULAR DURACIÓN CORRECTAMENTE
       let duracionFinal = 72;
       let duracionPersonalizadaEnviar = 0;
 
@@ -1372,19 +1230,22 @@ const handleGuardarEdicion = async () => {
       }
 
       dataToSend = {
-        titulo: `MegaSubasta: ${formData.articulos[0]?.titulo || 'Sin título'}${formData.articulos.length > 1 ? ` y ${formData.articulos.length - 1} más` : ''}`,
-        categoria_id: categoriaId,
-        descripcion: formData.articulos.map((a, i) => `${i + 1}. ${a.titulo}: ${a.descripcion}`).join('\n\n'),
+        esMegaSubasta: true,
+        categoriaMega: formData.categoriaMega,
+        portada: formData.portada || null,
+        articulos: formData.articulos.map(articulo => ({
+          titulo: articulo.titulo.trim(),
+          categoria_id: categoriaId,
+          descripcion: articulo.descripcion.trim(),
+          imagenes: articulo.imagenes,
+          video: articulo.video || null,
+          documento: articulo.documento || null
+        })),
         precio_inicial: parseFloat(formData.precio) || 0,
         puja_minima: formData.pujaMinima || 0,
         duracion_horas: duracionFinal,
         duracionPersonalizada: duracionPersonalizadaEnviar,
-        imagenes: [null, null, null],
-        video: null,
-        documento: formData.documento || null,
-        esMegaSubasta: true,
-        portada: formData.portada || null,
-        articulos: articulosParaEnviar
+        documento: formData.documento || null
       };
     } else {
       const categoriaId = formData.categoriaId;
@@ -1393,7 +1254,6 @@ const handleGuardarEdicion = async () => {
         return;
       }
 
-      // ✅ CALCULAR DURACIÓN CORRECTAMENTE
       let duracionFinal = 72;
       let duracionPersonalizadaEnviar = 0;
 
@@ -1414,35 +1274,40 @@ const handleGuardarEdicion = async () => {
       }
 
       dataToSend = {
-        titulo: formData.titulo,
+        titulo: formData.titulo.trim(),
         categoria_id: categoriaId,
-        descripcion: formData.descripcion,
+        descripcion: formData.descripcion.trim(),
         precio_inicial: parseFloat(formData.precio) || 0,
         puja_minima: formData.pujaMinima || 0,
         duracion_horas: duracionFinal,
         duracionPersonalizada: duracionPersonalizadaEnviar,
         imagenes: formData.imagenes,
-        video: formData.video,
-        documento: formData.documento,
-        esMegaSubasta: false,
-        portada: null,
-        articulos: []
+        video: formData.video || null,
+        documento: formData.documento || null,
+        esMegaSubasta: false
       };
     }
 
-    console.log('📦 Data a enviar al backend:', dataToSend);
+    console.log('📦 Enviando al backend:', dataToSend);
 
-    await subastaService.actualizarSubasta(subastaEditando.id, dataToSend);
-    await cargarSubastas();
-    handleCloseModal();
-    showModalMessage('¡Éxito!', 'Subasta actualizada correctamente', 'success');
-  } catch (error) {
-    console.error('Error actualizando subasta:', error);
-    showModalMessage('Error', error.response?.data?.message || 'Error al actualizar la subasta', 'error');
-  }
-};
+    try {
+      const response = await subastaService.crearSubasta(dataToSend);
+      
+      if (formData.esMegaSubasta) {
+        showModalMessage('¡Éxito!', 'MegaSubasta creada exitosamente -30 tickets.', 'success');
+      } else {
+        showModalMessage('¡Éxito!', 'Subasta creada exitosamente', 'success');
+      }
+      
+      await cargarSubastas();
+      handleCloseModal();
+    } catch (error) {
+      console.error('Error creando subasta:', error);
+      showModalMessage('Error', error.response?.data?.message || 'Error al crear la subasta', 'error');
+    }
+  };
 
-  // ========== HANDLE GUARDAR EDICION (CORREGIDO) ==========
+  // ========== HANDLE GUARDAR EDICION (CORREGIDO - ÚNICA DECLARACIÓN) ==========
   const handleGuardarEdicion = async () => {
     if (!validarFormulario()) {
       return;
@@ -1472,7 +1337,6 @@ const handleGuardarEdicion = async () => {
           _documento_url: art._documento_url || null
         }));
 
-        // ✅ CALCULAR DURACIÓN CORRECTAMENTE
         let duracionFinal = 72;
         let duracionPersonalizadaEnviar = 0;
 
@@ -1514,7 +1378,6 @@ const handleGuardarEdicion = async () => {
           return;
         }
 
-        // ✅ CALCULAR DURACIÓN CORRECTAMENTE
         let duracionFinal = 72;
         let duracionPersonalizadaEnviar = 0;
 
@@ -3180,7 +3043,6 @@ const handleGuardarEdicion = async () => {
                   // VALIDACIÓN PARA MEGASUBASTA EN EL PASO 2
                   if (paso === 2) {
                     if (formData.esMegaSubasta) {
-                      // Verificar que todos los artículos tengan 3 imágenes
                       let tieneError = false;
                       for (let i = 0; i < formData.articulos.length; i++) {
                         const articulo = formData.articulos[i];
@@ -3193,7 +3055,6 @@ const handleGuardarEdicion = async () => {
                       }
                       if (tieneError) return;
                     } else {
-                      // Subasta normal: validar 3 imágenes
                       if (formData.imagenes.length < 3) {
                         setShowErrorModal(true);
                         return;
@@ -3208,7 +3069,6 @@ const handleGuardarEdicion = async () => {
               </button>
             ) : (
               <div className="d-flex align-items-center gap-3">
-                {/* TICKETS SOLO SI NO ESTÁ EDITANDO */}
                 {!modalEditando && formData.esMegaSubasta && (
                   <span className="badge px-3 py-2 rounded-pill fw-bold small color-2" style={{ backgroundColor: "#f6d8a8" }}>
                     30 Tickets
