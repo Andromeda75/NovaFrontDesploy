@@ -1021,29 +1021,37 @@ useEffect(() => {
     }
   };
 
-  // ========== ELIMINAR SUBASTA ==========
 // ========== ELIMINAR SUBASTA ==========
 const handleEliminarClick = (subasta) => {
     // ✅ OBTENER USUARIO ACTUAL
     const user = authService.getCurrentUser();
-    console.log('🔍 Usuario actual:', user);
-    console.log('🔍 ID usuario:', user?.id, 'Tipo:', typeof user?.id);
-    console.log('🔍 Vendedor ID:', subasta.vendedor_id, 'Tipo:', typeof subasta.vendedor_id);
     
     if (!user) {
         showModalMessage('Error', 'No has iniciado sesión', 'error');
         return;
     }
 
+    // ✅ BUSCAR EL VENDEDOR_ID EN VARIAS PROPIEDADES POSIBLES
+    const vendedorId = subasta.vendedor_id || subasta.vendedorId || subasta.vendedor?.id || subasta.user_id || subasta.usuario_id;
+    
+    console.log('🔍 Subasta completa:', subasta);
+    console.log('🔍 Todas las propiedades:', Object.keys(subasta));
+    console.log('🔍 Vendedor ID encontrado:', vendedorId);
+    
+    if (!vendedorId) {
+        showModalMessage('Error', 'No se pudo identificar al vendedor de esta subasta', 'error');
+        return;
+    }
+
     // ✅ CONVERTIR AMBOS A NÚMERO PARA COMPARACIÓN SEGURA
     const userId = Number(user.id);
-    const vendedorId = Number(subasta.vendedor_id);
+    const vendedorIdNum = Number(vendedorId);
     
     console.log('🔍 userId (número):', userId);
-    console.log('🔍 vendedorId (número):', vendedorId);
-    console.log('🔍 Son iguales?', userId === vendedorId);
+    console.log('🔍 vendedorId (número):', vendedorIdNum);
+    console.log('🔍 Son iguales?', userId === vendedorIdNum);
 
-    if (userId !== vendedorId) {
+    if (userId !== vendedorIdNum) {
         showModalMessage('Error', 'No puedes eliminar una subasta que no te pertenece', 'error');
         return;
     }
