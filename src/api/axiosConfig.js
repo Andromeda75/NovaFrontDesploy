@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-// Usa la variable de entorno para la URL base
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || 'https://novabackdesploy-1.onrender.com/api',
     headers: {
@@ -9,12 +8,13 @@ const api = axios.create({
     timeout: 30000
 });
 
-// Interceptor para añadir token
+// Interceptor para añadir token (CORREGIDO)
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
         if (token) {
-            config.headers['x-auth-token'] = token;
+            // CORRECCIÓN: Usar 'Authorization' con 'Bearer'
+            config.headers['Authorization'] = `Bearer ${token}`;
         }
         return config;
     },
@@ -25,7 +25,7 @@ api.interceptors.request.use(
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response?.status === 401) {
+        if (error.response?.status === 401 || error.response?.status === 403) {
             localStorage.removeItem('token');
             localStorage.removeItem('usuario');
             localStorage.removeItem('rol_id');
