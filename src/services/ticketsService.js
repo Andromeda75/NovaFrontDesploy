@@ -40,6 +40,10 @@ export const ticketsService = {
         const response = await api.get(`/stripe/confirmar-pago?session_id=${sessionId}&paquete_id=${paqueteId}`);
         return response.data;
     },
+    
+    confirmarPagoSubasta: async (sessionId, subastaId) => {
+    const response = await api.get(`/stripe/confirmar-pago-subasta?session_id=${sessionId}&subasta_id=${subastaId}`);
+    return response.data;
 
     // Obtener métodos de pago del usuario
     getMetodosPago: async () => {

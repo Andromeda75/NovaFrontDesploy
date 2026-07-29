@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Container, Row, Col, Button, Card, Modal } from 'react-bootstrap';
+import PagoRealizado from '../../components/modals/pago_realizado.jsx';
 import { perfilService } from '../../services/perfilService';
 import { subastaService } from '../../services/subastaService';
 import { pujaService } from '../../services/pujaService';
@@ -9,6 +10,8 @@ import { favoriteService } from "../../services/favoriteService";
 import { ticketsService } from '../../services/ticketsService';
 import MensajeModal from '../../components/modals/MensajeModal.jsx';
 import { useModal } from '../../components/modals/useModal.jsx';
+
+const [showPagoRealizadoModal, setShowPagoRealizadoModal] = useState(false);
 
 const formatearCalificacion = (valor) => {
     if (valor === undefined || valor === null || isNaN(valor)) return '0.0';
@@ -121,11 +124,11 @@ const SubastaDetalle = () => {
         setProcesandoPago(true);
         
         try {
-            // Crear sesión de pago en Stripe para la subasta
             const response = await ticketsService.crearSesionPagoSubasta(id, subasta.puja_actual_mxn);
             
-            // Redirigir a Stripe
             if (response.url) {
+                // Guardar el ID de la sesión para verificar después
+                localStorage.setItem('stripe_session_id', response.session_id || '');
                 window.location.href = response.url;
             } else {
                 showModalMessage('Error', 'No se pudo iniciar el proceso de pago', 'error');
