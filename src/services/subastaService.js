@@ -41,16 +41,13 @@ export const subastaService = {
     // ========== ELIMINAR SUBASTA (COMPATIBLE CON AMBAS RUTAS) ==========
     eliminarSubasta: async (id) => {
         try {
-            // Primero intenta con la ruta específica
             const response = await api.delete(`/subastas/eliminar/${id}`);
             return response.data;
         } catch (error) {
-            // Si falla con 404, intenta con la ruta original
             if (error.response?.status === 404) {
                 const response = await api.delete(`/subastas/${id}`);
                 return response.data;
             }
-            // Si es otro error (403, 500, etc.), propagarlo
             throw error;
         }
     },
