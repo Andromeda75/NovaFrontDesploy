@@ -27,24 +27,9 @@ export const ticketsService = {
         return response.data;
     },
 
-    // Crear sesión de pago para subasta
-    crearSesionPagoSubasta: async (subastaId, monto) => {
-        const response = await api.post('/stripe/crear-sesion-pago-subasta', {
-            subasta_id: subastaId,
-            monto: monto
-        });
-        return response.data;
-    },
-
-    // Confirmar pago después de Stripe (para tickets)
+    // Confirmar pago después de Stripe
     confirmarPago: async (sessionId, paqueteId) => {
         const response = await api.get(`/stripe/confirmar-pago?session_id=${sessionId}&paquete_id=${paqueteId}`);
-        return response.data;
-    },
-
-    // Confirmar pago de subasta después de Stripe
-    confirmarPagoSubasta: async (sessionId, subastaId) => {
-        const response = await api.get(`/stripe/confirmar-pago-subasta?session_id=${sessionId}&subasta_id=${subastaId}`);
         return response.data;
     },
 
