@@ -1192,11 +1192,10 @@ const MisSubastas = () => {
 
     return true;
   };
-
-  // ========== CREAR SUBASTA (CORREGIDO) ==========
-  const handleCrearSubasta = async () => {
+// ========== CREAR SUBASTA (CORREGIDO) ==========
+const handleCrearSubasta = async () => {
     if (!validarFormulario()) {
-      return;
+        return;
     }
 
     setShowValidationModal(false);
@@ -1204,227 +1203,231 @@ const MisSubastas = () => {
     let dataToSend;
 
     if (formData.esMegaSubasta) {
-      const categoriaId = formData.categoriaId;
-      if (!categoriaId) {
-        showModalMessage('Error', 'Categoría no válida', 'error');
-        return;
-      }
+        const categoriaId = formData.categoriaId;
+        if (!categoriaId) {
+            showModalMessage('Error', 'Categoría no válida', 'error');
+            return;
+        }
 
-      let duracionFinal = 72;
-      let duracionPersonalizadaEnviar = 0;
+        let duracionFinal = 72;
+        let duracionPersonalizadaEnviar = 0;
 
-      if (formData.duracion === 'personalizada' && formData.duracionPersonalizada > 0) {
-        duracionPersonalizadaEnviar = formData.duracionPersonalizada;
-        duracionFinal = Math.ceil(formData.duracionPersonalizada / 60);
-      } else if (formData.duracion) {
-        const horasMap = {
-          '24 Horas': 24,
-          '48 Horas': 48,
-          '72 Horas': 72,
-          '96 Horas': 96,
-          '120 Horas': 120,
-          '168 Horas': 168,
-          '336 Horas': 336
+        // 🔥 CORRECCIÓN: Si es personalizada, duracion_horas = 0
+        if (formData.duracion === 'personalizada' && formData.duracionPersonalizada > 0) {
+            duracionPersonalizadaEnviar = formData.duracionPersonalizada;
+            duracionFinal = 0; // ← FORZAR A 0 PARA QUE EL BACKEND USE LOS MINUTOS
+        } else if (formData.duracion) {
+            const horasMap = {
+                '24 Horas': 24,
+                '48 Horas': 48,
+                '72 Horas': 72,
+                '96 Horas': 96,
+                '120 Horas': 120,
+                '168 Horas': 168,
+                '336 Horas': 336
+            };
+            duracionFinal = horasMap[formData.duracion] || 72;
+        }
+
+        dataToSend = {
+            esMegaSubasta: true,
+            categoriaMega: formData.categoriaMega,
+            portada: formData.portada || null,
+            articulos: formData.articulos.map(articulo => ({
+                titulo: articulo.titulo.trim(),
+                categoria_id: categoriaId,
+                descripcion: articulo.descripcion.trim(),
+                imagenes: articulo.imagenes,
+                video: articulo.video || null,
+                documento: articulo.documento || null
+            })),
+            precio_inicial: parseFloat(formData.precio) || 0,
+            puja_minima: formData.pujaMinima || 0,
+            duracion_horas: duracionFinal, // ← 0 PARA PERSONALIZADA
+            duracionPersonalizada: duracionPersonalizadaEnviar,
+            documento: formData.documento || null
         };
-        duracionFinal = horasMap[formData.duracion] || 72;
-      }
-
-      dataToSend = {
-        esMegaSubasta: true,
-        categoriaMega: formData.categoriaMega,
-        portada: formData.portada || null,
-        articulos: formData.articulos.map(articulo => ({
-          titulo: articulo.titulo.trim(),
-          categoria_id: categoriaId,
-          descripcion: articulo.descripcion.trim(),
-          imagenes: articulo.imagenes,
-          video: articulo.video || null,
-          documento: articulo.documento || null
-        })),
-        precio_inicial: parseFloat(formData.precio) || 0,
-        puja_minima: formData.pujaMinima || 0,
-        duracion_horas: duracionFinal,
-        duracionPersonalizada: duracionPersonalizadaEnviar,
-        documento: formData.documento || null
-      };
     } else {
-      const categoriaId = formData.categoriaId;
-      if (!categoriaId) {
-        showModalMessage('Error', 'Categoría no válida', 'error');
-        return;
-      }
+        const categoriaId = formData.categoriaId;
+        if (!categoriaId) {
+            showModalMessage('Error', 'Categoría no válida', 'error');
+            return;
+        }
 
-      let duracionFinal = 72;
-      let duracionPersonalizadaEnviar = 0;
+        let duracionFinal = 72;
+        let duracionPersonalizadaEnviar = 0;
 
-      if (formData.duracion === 'personalizada' && formData.duracionPersonalizada > 0) {
-        duracionPersonalizadaEnviar = formData.duracionPersonalizada;
-        duracionFinal = Math.ceil(formData.duracionPersonalizada / 60);
-      } else if (formData.duracion) {
-        const horasMap = {
-          '24 Horas': 24,
-          '48 Horas': 48,
-          '72 Horas': 72,
-          '96 Horas': 96,
-          '120 Horas': 120,
-          '168 Horas': 168,
-          '336 Horas': 336
+        // 🔥 CORRECCIÓN: Si es personalizada, duracion_horas = 0
+        if (formData.duracion === 'personalizada' && formData.duracionPersonalizada > 0) {
+            duracionPersonalizadaEnviar = formData.duracionPersonalizada;
+            duracionFinal = 0; // ← FORZAR A 0 PARA QUE EL BACKEND USE LOS MINUTOS
+        } else if (formData.duracion) {
+            const horasMap = {
+                '24 Horas': 24,
+                '48 Horas': 48,
+                '72 Horas': 72,
+                '96 Horas': 96,
+                '120 Horas': 120,
+                '168 Horas': 168,
+                '336 Horas': 336
+            };
+            duracionFinal = horasMap[formData.duracion] || 72;
+        }
+
+        dataToSend = {
+            titulo: formData.titulo.trim(),
+            categoria_id: categoriaId,
+            descripcion: formData.descripcion.trim(),
+            precio_inicial: parseFloat(formData.precio) || 0,
+            puja_minima: formData.pujaMinima || 0,
+            duracion_horas: duracionFinal, // ← 0 PARA PERSONALIZADA
+            duracionPersonalizada: duracionPersonalizadaEnviar,
+            imagenes: formData.imagenes,
+            video: formData.video || null,
+            documento: formData.documento || null,
+            esMegaSubasta: false
         };
-        duracionFinal = horasMap[formData.duracion] || 72;
-      }
-
-      dataToSend = {
-        titulo: formData.titulo.trim(),
-        categoria_id: categoriaId,
-        descripcion: formData.descripcion.trim(),
-        precio_inicial: parseFloat(formData.precio) || 0,
-        puja_minima: formData.pujaMinima || 0,
-        duracion_horas: duracionFinal,
-        duracionPersonalizada: duracionPersonalizadaEnviar,
-        imagenes: formData.imagenes,
-        video: formData.video || null,
-        documento: formData.documento || null,
-        esMegaSubasta: false
-      };
     }
 
     console.log('📦 Enviando al backend:', dataToSend);
 
     try {
-      const response = await subastaService.crearSubasta(dataToSend);
-      
-      if (formData.esMegaSubasta) {
-        showModalMessage('¡Éxito!', 'MegaSubasta creada exitosamente -30 tickets.', 'success');
-      } else {
-        showModalMessage('¡Éxito!', 'Subasta creada exitosamente', 'success');
-      }
-      
-      await cargarSubastas();
-      handleCloseModal();
+        const response = await subastaService.crearSubasta(dataToSend);
+        
+        if (formData.esMegaSubasta) {
+            showModalMessage('¡Éxito!', 'MegaSubasta creada exitosamente -30 tickets.', 'success');
+        } else {
+            showModalMessage('¡Éxito!', 'Subasta creada exitosamente', 'success');
+        }
+        
+        await cargarSubastas();
+        handleCloseModal();
     } catch (error) {
-      console.error('Error creando subasta:', error);
-      showModalMessage('Error', error.response?.data?.message || 'Error al crear la subasta', 'error');
+        console.error('Error creando subasta:', error);
+        showModalMessage('Error', error.response?.data?.message || 'Error al crear la subasta', 'error');
     }
-  };
+};
 
-  // ========== HANDLE GUARDAR EDICION (CORREGIDO - ÚNICA DECLARACIÓN) ==========
-  const handleGuardarEdicion = async () => {
+// ========== HANDLE GUARDAR EDICION (CORREGIDO) ==========
+const handleGuardarEdicion = async () => {
     if (!validarFormulario()) {
-      return;
+        return;
     }
 
     try {
-      let dataToSend;
+        let dataToSend;
 
-      if (formData.esMegaSubasta) {
-        const categoriaId = formData.categoriaId;
-        if (!categoriaId) {
-          showModalMessage('Error', 'Categoría no válida', 'error');
-          return;
+        if (formData.esMegaSubasta) {
+            const categoriaId = formData.categoriaId;
+            if (!categoriaId) {
+                showModalMessage('Error', 'Categoría no válida', 'error');
+                return;
+            }
+            
+            const articulosParaEnviar = formData.articulos.map(art => ({
+                titulo: art.titulo || '',
+                categoria_id: categoriaId,
+                descripcion: art.descripcion || '',
+                imagenes: art.imagenes || [],
+                video: art.video || null,
+                documento: art.documento || null,
+                _foto1_url: art._foto1_url || null,
+                _foto2_url: art._foto2_url || null,
+                _foto3_url: art._foto3_url || null,
+                _video_url: art._video_url || null,
+                _documento_url: art._documento_url || null
+            }));
+
+            let duracionFinal = 72;
+            let duracionPersonalizadaEnviar = 0;
+
+            // 🔥 CORRECCIÓN: Si es personalizada, duracion_horas = 0
+            if (formData.duracion === 'personalizada' && formData.duracionPersonalizada > 0) {
+                duracionPersonalizadaEnviar = formData.duracionPersonalizada;
+                duracionFinal = 0; // ← FORZAR A 0 PARA QUE EL BACKEND USE LOS MINUTOS
+            } else if (formData.duracion) {
+                const horasMap = {
+                    '24 Horas': 24,
+                    '48 Horas': 48,
+                    '72 Horas': 72,
+                    '96 Horas': 96,
+                    '120 Horas': 120,
+                    '168 Horas': 168,
+                    '336 Horas': 336
+                };
+                duracionFinal = horasMap[formData.duracion] || 72;
+            }
+
+            dataToSend = {
+                titulo: `MegaSubasta: ${formData.articulos[0]?.titulo || 'Sin título'}${formData.articulos.length > 1 ? ` y ${formData.articulos.length - 1} más` : ''}`,
+                categoria_id: categoriaId,
+                descripcion: formData.articulos.map((a, i) => `${i + 1}. ${a.titulo}: ${a.descripcion}`).join('\n\n'),
+                precio_inicial: parseFloat(formData.precio) || 0,
+                puja_minima: formData.pujaMinima || 0,
+                duracion_horas: duracionFinal, // ← 0 PARA PERSONALIZADA
+                duracionPersonalizada: duracionPersonalizadaEnviar,
+                imagenes: [null, null, null],
+                video: null,
+                documento: formData.documento || null,
+                esMegaSubasta: true,
+                portada: formData.portada || null,
+                articulos: articulosParaEnviar
+            };
+        } else {
+            const categoriaId = formData.categoriaId;
+            if (!categoriaId) {
+                showModalMessage('Error', 'Categoría no válida', 'error');
+                return;
+            }
+
+            let duracionFinal = 72;
+            let duracionPersonalizadaEnviar = 0;
+
+            // 🔥 CORRECCIÓN: Si es personalizada, duracion_horas = 0
+            if (formData.duracion === 'personalizada' && formData.duracionPersonalizada > 0) {
+                duracionPersonalizadaEnviar = formData.duracionPersonalizada;
+                duracionFinal = 0; // ← FORZAR A 0 PARA QUE EL BACKEND USE LOS MINUTOS
+            } else if (formData.duracion) {
+                const horasMap = {
+                    '24 Horas': 24,
+                    '48 Horas': 48,
+                    '72 Horas': 72,
+                    '96 Horas': 96,
+                    '120 Horas': 120,
+                    '168 Horas': 168,
+                    '336 Horas': 336
+                };
+                duracionFinal = horasMap[formData.duracion] || 72;
+            }
+
+            dataToSend = {
+                titulo: formData.titulo,
+                categoria_id: categoriaId,
+                descripcion: formData.descripcion,
+                precio_inicial: parseFloat(formData.precio) || 0,
+                puja_minima: formData.pujaMinima || 0,
+                duracion_horas: duracionFinal, // ← 0 PARA PERSONALIZADA
+                duracionPersonalizada: duracionPersonalizadaEnviar,
+                imagenes: formData.imagenes,
+                video: formData.video,
+                documento: formData.documento,
+                esMegaSubasta: false,
+                portada: null,
+                articulos: []
+            };
         }
-        
-        const articulosParaEnviar = formData.articulos.map(art => ({
-          titulo: art.titulo || '',
-          categoria_id: categoriaId,
-          descripcion: art.descripcion || '',
-          imagenes: art.imagenes || [],
-          video: art.video || null,
-          documento: art.documento || null,
-          _foto1_url: art._foto1_url || null,
-          _foto2_url: art._foto2_url || null,
-          _foto3_url: art._foto3_url || null,
-          _video_url: art._video_url || null,
-          _documento_url: art._documento_url || null
-        }));
 
-        let duracionFinal = 72;
-        let duracionPersonalizadaEnviar = 0;
+        console.log('📦 Data a enviar al backend:', dataToSend);
 
-        if (formData.duracion === 'personalizada' && formData.duracionPersonalizada > 0) {
-          duracionPersonalizadaEnviar = formData.duracionPersonalizada;
-          duracionFinal = Math.ceil(formData.duracionPersonalizada / 60);
-        } else if (formData.duracion) {
-          const horasMap = {
-            '24 Horas': 24,
-            '48 Horas': 48,
-            '72 Horas': 72,
-            '96 Horas': 96,
-            '120 Horas': 120,
-            '168 Horas': 168,
-            '336 Horas': 336
-          };
-          duracionFinal = horasMap[formData.duracion] || 72;
-        }
-
-        dataToSend = {
-          titulo: `MegaSubasta: ${formData.articulos[0]?.titulo || 'Sin título'}${formData.articulos.length > 1 ? ` y ${formData.articulos.length - 1} más` : ''}`,
-          categoria_id: categoriaId,
-          descripcion: formData.articulos.map((a, i) => `${i + 1}. ${a.titulo}: ${a.descripcion}`).join('\n\n'),
-          precio_inicial: parseFloat(formData.precio) || 0,
-          puja_minima: formData.pujaMinima || 0,
-          duracion_horas: duracionFinal,
-          duracionPersonalizada: duracionPersonalizadaEnviar,
-          imagenes: [null, null, null],
-          video: null,
-          documento: formData.documento || null,
-          esMegaSubasta: true,
-          portada: formData.portada || null,
-          articulos: articulosParaEnviar
-        };
-      } else {
-        const categoriaId = formData.categoriaId;
-        if (!categoriaId) {
-          showModalMessage('Error', 'Categoría no válida', 'error');
-          return;
-        }
-
-        let duracionFinal = 72;
-        let duracionPersonalizadaEnviar = 0;
-
-        if (formData.duracion === 'personalizada' && formData.duracionPersonalizada > 0) {
-          duracionPersonalizadaEnviar = formData.duracionPersonalizada;
-          duracionFinal = Math.ceil(formData.duracionPersonalizada / 60);
-        } else if (formData.duracion) {
-          const horasMap = {
-            '24 Horas': 24,
-            '48 Horas': 48,
-            '72 Horas': 72,
-            '96 Horas': 96,
-            '120 Horas': 120,
-            '168 Horas': 168,
-            '336 Horas': 336
-          };
-          duracionFinal = horasMap[formData.duracion] || 72;
-        }
-
-        dataToSend = {
-          titulo: formData.titulo,
-          categoria_id: categoriaId,
-          descripcion: formData.descripcion,
-          precio_inicial: parseFloat(formData.precio) || 0,
-          puja_minima: formData.pujaMinima || 0,
-          duracion_horas: duracionFinal,
-          duracionPersonalizada: duracionPersonalizadaEnviar,
-          imagenes: formData.imagenes,
-          video: formData.video,
-          documento: formData.documento,
-          esMegaSubasta: false,
-          portada: null,
-          articulos: []
-        };
-      }
-
-      console.log('📦 Data a enviar al backend:', dataToSend);
-
-      await subastaService.actualizarSubasta(subastaEditando.id, dataToSend);
-      await cargarSubastas();
-      handleCloseModal();
-      showModalMessage('¡Éxito!', 'Subasta actualizada correctamente', 'success');
+        await subastaService.actualizarSubasta(subastaEditando.id, dataToSend);
+        await cargarSubastas();
+        handleCloseModal();
+        showModalMessage('¡Éxito!', 'Subasta actualizada correctamente', 'success');
     } catch (error) {
-      console.error('Error actualizando subasta:', error);
-      showModalMessage('Error', error.response?.data?.message || 'Error al actualizar la subasta', 'error');
+        console.error('Error actualizando subasta:', error);
+        showModalMessage('Error', error.response?.data?.message || 'Error al actualizar la subasta', 'error');
     }
-  };
+};
 
   const renderPasoContenido = () => {
     if (paso === 1) {
