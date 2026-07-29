@@ -49,6 +49,7 @@ const MisSubastas = () => {
     descripcion: '',
     precio: '',
     duracion: '',
+    duracionPersonalizada: 0,
     pujaMinima: null,
     imagenes: [],
     video: null,
@@ -1035,7 +1036,7 @@ const MisSubastas = () => {
 
   // ========== HANDLE GUARDAR EDICION (MODIFICADO - CON VALIDACIÓN Y LOGS) ==========
   const handleGuardarEdicion = async () => {
-    // ✅ PRIMERO VALIDAR EL FORMULARIO
+    //  PRIMERO VALIDAR EL FORMULARIO
     if (!validarFormulario()) {
       return;
     }
@@ -1071,12 +1072,13 @@ const MisSubastas = () => {
           precio_inicial: parseFloat(formData.precio) || 0,
           puja_minima: formData.pujaMinima || 0,
           duracion_horas: formData.duracion === '24 Horas' ? 24 : 
-                         formData.duracion === '48 Horas' ? 48 : 
-                         formData.duracion === '72 Horas' ? 72 : 
-                         formData.duracion === '96 Horas' ? 96 : 
-                         formData.duracion === '120 Horas' ? 120 :
-                         formData.duracion === '168 Horas' ? 168 :
-                         formData.duracion === '336 Horas' ? 336 : 72,
+                        formData.duracion === '48 Horas' ? 48 : 
+                        formData.duracion === '72 Horas' ? 72 : 
+                        formData.duracion === '96 Horas' ? 96 : 
+                        formData.duracion === '120 Horas' ? 120 :
+                        formData.duracion === '168 Horas' ? 168 :
+                        formData.duracion === '336 Horas' ? 336 :
+                        formData.duracion === 'personalizada' ? Math.ceil(formData.duracionPersonalizada / 60) : 72,
           imagenes: [null, null, null],
           video: null,
           documento: formData.documento || null,
@@ -1098,12 +1100,12 @@ const MisSubastas = () => {
           precio_inicial: parseFloat(formData.precio) || 0,
           puja_minima: formData.pujaMinima || 0,
           duracion_horas: formData.duracion === '24 Horas' ? 24 : 
-                         formData.duracion === '48 Horas' ? 48 : 
-                         formData.duracion === '72 Horas' ? 72 : 
-                         formData.duracion === '96 Horas' ? 96 : 
-                         formData.duracion === '120 Horas' ? 120 :
-                         formData.duracion === '168 Horas' ? 168 :
-                         formData.duracion === '336 Horas' ? 336 : 72,
+                        formData.duracion === '48 Horas' ? 48 : 
+                        formData.duracion === '72 Horas' ? 72 : 
+                        formData.duracion === '96 Horas' ? 96 : 
+                        formData.duracion === '120 Horas' ? 120 :
+                        formData.duracion === '168 Horas' ? 168 :
+                        formData.duracion === '336 Horas' ? 336 : 72,
           imagenes: formData.imagenes,
           video: formData.video,
           documento: formData.documento,
@@ -1138,7 +1140,7 @@ const MisSubastas = () => {
   // ========== VALIDACIÓN COMPLETA DEL FORMULARIO (MODIFICADA) ==========
   const validarFormulario = () => {
     if (formData.esMegaSubasta) {
-      // ✅ VALIDACIÓN DE PORTADA OBLIGATORIA
+      //  VALIDACIÓN DE PORTADA OBLIGATORIA
       if (!formData.portada) {
         setValidationMessage('La MegaSubasta necesita una portada. Sube una imagen que represente tu colección.');
         setShowValidationModal(true);
@@ -1163,7 +1165,7 @@ const MisSubastas = () => {
           setShowValidationModal(true);
           return false;
         }
-        // ✅ VALIDACIÓN DE IMÁGENES DE CADA ARTÍCULO
+        //  VALIDACIÓN DE IMÁGENES DE CADA ARTÍCULO
         if (!articulo.imagenes || articulo.imagenes.length < 3) {
           setValidationMessage(`El artículo #${i + 1} necesita al menos 3 imágenes (tienes ${articulo.imagenes?.length || 0})`);
           setShowValidationModal(true);
@@ -1214,7 +1216,7 @@ const MisSubastas = () => {
   };
 
   const handleCrearSubasta = async () => {
-    // ✅ PRIMERO VALIDAR EL FORMULARIO
+    //  PRIMERO VALIDAR EL FORMULARIO
     if (!validarFormulario()) {
       return;
     }
@@ -1251,7 +1253,8 @@ const MisSubastas = () => {
         formData.duracion === '96 Horas' ? 96 :
         formData.duracion === '120 Horas' ? 120 :
         formData.duracion === '168 Horas' ? 168 :
-        formData.duracion === '336 Horas' ? 336 : 0,
+        formData.duracion === '336 Horas' ? 336 :
+        formData.duracion === 'personalizada' ? Math.ceil(formData.duracionPersonalizada / 60) : 0,
         documento: formData.documento || null
       };
     } else {
@@ -1354,7 +1357,7 @@ const MisSubastas = () => {
             <small className="text-muted">Esta categoría aplicará a todos los artículos de la MegaSubasta</small>
           </div>
 
-          {/* ✅ PORTADA DE LA MEGASUBASTA - OBLIGATORIA */}
+          {/*  PORTADA DE LA MEGASUBASTA - OBLIGATORIA */}
           <div className="mb-3">
             <label className="fw-bold mb-1 small color-2">
               Portada de la MegaSubasta <span className="text-danger">*</span>
@@ -1970,25 +1973,56 @@ const MisSubastas = () => {
               <span className="input-group-text border-color-1 bg-light" style={{ borderRadius: "12px 0 0 12px" }}>
                 <i className="bi bi-calendar-event"></i>
               </span>
-              <select 
-                name="duracion"
-                className="form-select p-3 border-color-1"
-                value={formData.duracion}
-                onChange={handleInputChange}
-              >
-                <option value="">Selecciona una duración</option>
-                <option value="24 Horas">24 Horas</option>
-                <option value="48 Horas">48 Horas</option>
-                <option value="72 Horas">72 Horas</option>
-                <option value="96 Horas">96 Horas (4 días)</option>
-                <option value="120 Horas">120 Horas (5 días)</option>
-                {formData.esMegaSubasta && (
-                  <>
-                    <option value="168 Horas">168 Horas (7 días / 1 semana)</option>
-                    <option value="336 Horas">336 Horas (14 días / 2 semanas)</option>
-                  </>
-                )}
-              </select>
+                <select 
+                  name="duracion"
+                  className="form-select p-3 border-color-1"
+                  value={formData.duracion}
+                  onChange={handleInputChange}
+                >
+                  <option value="">Selecciona una duración</option>
+                  <option value="24 Horas">24 Horas</option>
+                  <option value="48 Horas">48 Horas</option>
+                  <option value="72 Horas">72 Horas</option>
+                  <option value="96 Horas">96 Horas (4 días)</option>
+                  <option value="120 Horas">120 Horas (5 días)</option>
+                  {formData.esMegaSubasta && (
+                    <>
+                      <option value="168 Horas">168 Horas (7 días / 1 semana)</option>
+                      <option value="336 Horas">336 Horas (14 días / 2 semanas)</option>
+                    </>
+                  )}
+                  <option value="personalizada">Personalizada (minutos)</option>
+                </select>
+                  {formData.duracion === 'personalizada' && (
+                    <div className="mb-3">
+                      <label className="fw-bold mb-1 small color-2">
+                        Duración en minutos <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        className="form-control p-3 border-color-1"
+                        placeholder="Ej: 180 (3 horas)"
+                        value={formData.duracionPersonalizada || ''}
+                        onChange={(e) => {
+                          const minutos = parseInt(e.target.value) || 0;
+                          setFormData(prev => ({
+                            ...prev,
+                            duracionPersonalizada: minutos
+                          }));
+                        }}
+                        min="1"
+                        style={{ borderRadius: "12px" }}
+                      />
+                      <small className="text-muted d-block mt-1">
+                        Ejemplos: 60 = 1 hora, 180 = 3 horas, 1440 = 24 horas, 2880 = 48 horas
+                      </small>
+                      {formData.duracionPersonalizada < 1 && (
+                        <small className="text-danger d-block mt-1">
+                          La duración debe ser al menos 1 minuto
+                        </small>
+                      )}
+                    </div>
+                  )}
             </div>
           </div>
         </div>
@@ -2884,7 +2918,7 @@ const MisSubastas = () => {
                 className="btn-linear-gradient py-2 px-3"
                 style={{ borderRadius: "8px", fontSize: "0.85rem" }}
                 onClick={() => {
-                  // ✅ VALIDACIÓN PARA MEGASUBASTA EN EL PASO 2
+                  //  VALIDACIÓN PARA MEGASUBASTA EN EL PASO 2
                   if (paso === 2) {
                     if (formData.esMegaSubasta) {
                       // Verificar que todos los artículos tengan 3 imágenes
@@ -2915,7 +2949,7 @@ const MisSubastas = () => {
               </button>
             ) : (
               <div className="d-flex align-items-center gap-3">
-                {/* ✅ TICKETS SOLO SI NO ESTÁ EDITANDO */}
+                {/*  TICKETS SOLO SI NO ESTÁ EDITANDO */}
                 {!modalEditando && formData.esMegaSubasta && (
                   <span className="badge px-3 py-2 rounded-pill fw-bold small color-2" style={{ backgroundColor: "#f6d8a8" }}>
                     30 Tickets
