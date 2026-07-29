@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { authService } from './services/authService';
 import TerminosModal from './components/modals/TerminosModal';
-import PagoExitoso from './pages/subastas/PagoExitoso';
+import PagoGanador from './pages/subastas/PagoGanador.jsx';
 import Login from './pages/auth/Login.jsx';
 import Register from './pages/auth/Register.jsx';
 
@@ -209,11 +209,11 @@ function App() {
                             <MainLayout><ProfilePublicCatalogo /></MainLayout>
                         </ProtectedRoute>
                     } />
-                    <Route path="/subasta/:id/pago-exitoso" element={
-                    <ProtectedRoute>
-                        <MainLayout><PagoExitoso /></MainLayout>
-                    </ProtectedRoute>
-} />
+                    <Route path="/subasta/:id/pago" element={
+                        <ProtectedRoute>
+                            <MainLayout><PagoGanador /></MainLayout>
+                        </ProtectedRoute>
+                    } />
 
                     {/* ========== RUTA DE ACCESO DENEGADO ========== */}
                     <Route path="/sin-permiso" element={
